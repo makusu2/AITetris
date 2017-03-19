@@ -4,6 +4,7 @@ import display
 import Tkinter
 from Tkinter import *
 from board import *
+import time
 class Input:
 	def __init__(self, parent):
 		self.parent = parent
@@ -23,6 +24,8 @@ class AgentState:
 		#boolGrid is without the starting tetro
 		self.boolGrid = boolGrid #I think this is a list of coordinates
 		self.tetroBoxList = tetroBoxList
+	def getStartState(self):
+		return self.tetroBoxList
 	def getPossibleEndStates(self):
 		#First, get the tetro list if it were at the bottom of the map, even overlapping
 		possibleEndStates = []
@@ -65,12 +68,17 @@ class Agent(Input):
 	def newTurn(self):
 		self.grid = parent.gameGrid.getBoolGrid()
 		self.state = AgentState(self.grid,self.parent.fallingTetro.getStartBoxPointList,self)
+		for action in self.getActions():
+			time.pause(0.5)
+			self.parent.pressedKey(action)
+			time.pause(0.5)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = self.getStartState()
 		endState = self.getEndState(startState)
-		return getPath(startState,endState)
+		startPos = startState
+		return getPath(startState[0],endState[0])#indexing since both should now be coordinates
 	#def getCost(self):
 	#	print "nope"
 		#Do we need this? Does Tetris really have a "cost" for the movement of tetros?
@@ -82,11 +90,17 @@ class Agent(Input):
 			tempGridList[tetroSpot] = False
 		return tempGridList
 	def getStartState(self):
-		tetroList = self.parent.fallingTetro.getStartBoxPointList
+		tetroList = self.parent.fallingTetro.getStartBoxPointList()
 		startState = AgentState(self.getBoolListWithoutTetro,tetroList)
-		return startState
+		return startState.getStartState()
 	def getEndState(self,startState):
-		possibleStates = getEachEndPlacement(self,startState)
+		agentState = AgentState(self.getBoolListWithoutTetro(),self.parent.fallingTetro.getStartBoxPointList(),self)
+		possibleEndStates = agentState.getPossibleEndStates()
+		possibleEndStateVals = [self.evaluateEndState(possibleEndState) for possibleEndState in possibleEndStates]
+		return possibleEndStates[possibleEndStateVals.index(max(possibleEndStateVals))]
+		
+		
+		#possibleStates = #getEachEndPlacement(self,startState)
 		possibleStateVals = [self.evaluateEndState(endState) for endState in possibleStates]
 		bestIndex = possibleStateVals.index(min(possibleStateVals))
 		bestStateTemp = possibleStates[bestIndex]
@@ -123,6 +137,20 @@ class Agent(Input):
 					endPlacements.append(botBoxes)
 					break
 		return endPlacements
-class Search:
-	def getPath(startState,endState):
+def getPath(startState,endState):
+		currentState = [startDim for startDim in startState]
+		actions = []
+		moveLeft = (startState[0]>endState[0])
+		if moveLeft:
+			while (currentState[0]>endState[0]):
+				actions.append("a")
+				currentState[0]=currentState[0]-1
+		else:
+			while (currentState[0]<endState[0]):
+				actions.append("d")
+				currentState[0] = currentState[0]+1
+		while (currentState[1]<endState[1]):
+			actions.append("s")
+			currentState[1] = currentState[1]+1
+		return actions
 		

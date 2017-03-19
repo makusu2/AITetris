@@ -10,7 +10,9 @@ class Display:
 	def __init__(self, master=Tk(),board=Board()):
 		self.master = master
 		self.board = board
-		self.input = KeyboardInput(self) #Make it a choice later
+		#self.input = KeyboardInput(self) #Make it a choice later
+		self.gameGrid = GameGrid(self)
+		self.input = Agent(self)
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		
@@ -18,7 +20,6 @@ class Display:
 		self.master.geometry("300x300")
 		Label(master, text = "Play Tetris!\n\n").pack()
 		
-		self.gameGrid = GameGrid(self)
 		
 		self.points = 0
 		
@@ -71,7 +72,7 @@ class Display:
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
 		self.fallingBlocks = newBoxes
-	def rotate(self):
+	#def rotate(self):
 		#Since tetris games have different rules for rotation,
 		#we will have to press rotate, then get a screenshot for the new board.
 		#Also, we will only rotate in one direction.
