@@ -25,17 +25,22 @@ class AgentState:
 		self.tetroBoxList = tetroBoxList
 	def getPossibleEndStates(self):
 		#First, get the tetro list if it were at the bottom of the map, even overlapping
+		possibleEndStates = []
 		bottomTetros = self.getPossibleTetrosAtBottom()
 		for bottomTetro in bottomTetros:
-			for bottomTetroBoxes in bottomTetro:
-				if bottomTetroBoxes not in tetroBoxList: #I think this is correct notation
-					#TODO CONTINUE HERE
-					
-					
-					
-					
-					
-					
+			weGood = False
+			while not weGood:
+				weGood = True
+				for bottomTetroBox in bottomTetro:
+					#for bottomTetroBox in bottomTetroBoxes:
+					if bottomTetroBox in boolGrid.asList():
+						weGood = False
+				if not weGood:
+					for i in range(0,len(bottomTetro)):
+						currentBox = bottomTetro[i]
+						bottomTetro[i] = [currentBox[0],currentBox[1]-1]
+			possibleEndStates.append(bottomTetro)
+		return possibleEndStates
 		#Then, for each, move each box up until nothing overlaps
 	def getPossibleTetrosAtBottom(self):
 		tetroBoxCols = [dim[0] for dim in self.tetroBoxList]
