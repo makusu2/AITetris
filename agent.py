@@ -10,6 +10,7 @@ import makuUtil
 from makuUtil import Directions
 import conf
 from conf import *
+import random
 class Input:
 	def __init__(self, parent):
 		self.parent = parent
@@ -26,10 +27,11 @@ class KeyboardInput(Input):
 		self.parent.pressedKey(key)
 	def newTurn(self):
 		print "New turn started"#this is only used in agent
-class AgentState:
+
+class State:
 	def __init__(self,boolGrid,tetroBoxList,parent):
 		#boolGrid is without the starting tetro
-		self.boolGrid = boolGrid #I think this is a list of coordinates
+		self.boolGrid = boolGrid #This is a dict
 		self.tetroBoxList = tetroBoxList
 		self.parent = parent
 	def getPossibleEndStates(self):
@@ -66,14 +68,102 @@ class AgentState:
 						currentBox = bottomTetro[i]
 						bottomTetro[i] = [currentBox[0],currentBox[1]-1]
 			possibleEndTetros.append(bottomTetro)
-		possibleEndStates = [AgentState(self.boolGrid,possibleEndTetro,self.parent) for possibleEndTetro in possibleEndTetros]
+		possibleEndStates = [State(self.boolGrid,possibleEndTetro,self.parent) for possibleEndTetro in possibleEndTetros]
 		return possibleEndStates#States
-		
+	def getPossibleEndStates2(self):
+		def isTerminalState(state):
+			for box in state.tetroBoxList:
+				if (box[1]+1)>=boardDepth:
+					return True
+				elif state.boolGrid[(box[0],box[1]+1)]:
+					return True
+			return False
+		#So, frontier should be list of box locations instead
+		startBoxes = tuple([tuple(box) for box in self.tetroBoxList])
+		frontier = [startBoxes]
+		explored = {startBoxes:tuple()}
+		boxesToState = {startBoxes:self}
+		terminalStates = []
+		#print "1"
+		while frontier:
+			#print "frontLength: ",len(frontier)
+			#print "1"
+			#print "frontier: ",frontier
+			front = frontier.pop()
+			#print "frontier: ",frontier
+			#print "boxesToState: ",boxesToState
+			frontState = boxesToState[front]
+			#print "2"
+			#print "frontier2: ",frontier
+			#time.sleep(0.5)
+			#if front in explored: continue
+			oldActions = list(explored[front])
+			for newAction in frontState.getLegalActions():
+				newState = frontState.generateSuccessor(newAction)
+				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
+				if not newBoxes in explored:
+					#print "oldActions: ",oldActions
+					#print "newAction: ",newAction
+					#print "oldActionsType: ",type(oldActions)
+					#print "newActionType: ",type(newAction)
+					#appendation = oldActions+[newAction]
+					#print "appendation: ",appendation
+					#if not oldActions:
+					#	appendation = [newAction]
+					#newStateTuple = tuple(appendation)
+					explored[newBoxes] = tuple(oldActions+[newAction])
+					boxesToState[newBoxes] = newState
+					frontier.append(newBoxes)
+					if isTerminalState(newState):
+						terminalStates.append(newState)
+			#print "frontierAtEnd: ",frontier
+		#print "terminalStates: ",terminalStates
+		#print "2"
+		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
 		for tetroBox in self.tetroBoxList:
 			comboGrid[tuple(tetroBox)] = True
 		return comboGrid
+	def evaluationFunction(self):
+		boxes = self.tetroBoxList
+		comboGrid = self.getComboGrid()
+		runningScore = 0.0
+		for row in range(boardDepth-1,0,-1):
+			for col in range(boardWidth):
+				if comboGrid[(col,row)]:
+					height = float(boardDepth - row)
+					runningScore+=(1/height)
+		return runningScore
+	def getLegalActions(self):
+		actions = copy.copy(Directions.directions)
+		for direction in Directions.directions:
+			for box in self.tetroBoxList:
+				newBox = (box[0]+Directions.rowMod[direction],box[1]+Directions.colMod[direction])
+				newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
+				if newBoxIllegal or self.boolGrid[newBox]:
+					if direction in actions:
+						actions.remove(direction)
+				#newBoxBreaksRules = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (self.boolGrid[newBox]))
+				#if newBoxBreaksRules:
+				#	actions.remove(direction)
+		return actions
+	def generateSuccessor(self,direction):
+		newBoolGrid = copy.copy(self.boolGrid)
+		newBoxes = [[box[0]+Directions.rowMod[direction],box[1]+Directions.colMod[direction]] for box in self.tetroBoxList]
+		newState = State(newBoolGrid,newBoxes,self.parent)
+		return newState
+	def __str__(self):
+		s = ""
+		for col in range(boardWidth):
+			for row in range(boardDepth):
+				if [col,row] in self.tetroBoxList: #Is this list and not tuple?
+					s+='T'
+				elif self.boolGrid[(col,row)]:
+					s+='#'
+				else:
+					s+='0'
+		return s
 		
 class Agent(Input):
 	def __init__(self, parent):
@@ -82,7 +172,7 @@ class Agent(Input):
 		self.state = None
 	def newTurn(self):
 		self.grid = self.parent.gameGrid.getBoolGrid()
-		self.state = AgentState(self.grid,self.parent.fallingTetro.getStartBoxPointList,self)
+		self.state = State(self.grid,self.parent.fallingTetro.getStartBoxPointList,self)
 		actionsToTake = self.getActions()
 		for action in actionsToTake:
 			time.sleep(0.01)
@@ -104,23 +194,22 @@ class Agent(Input):
 		return boolGridDict
 	def getStartState(self):
 		tetroList = self.parent.fallingTetro.getStartBoxPointList()
-		startState = AgentState(self.getBoolListWithoutTetro,tetroList,self)
+		startState = State(self.getBoolListWithoutTetro,tetroList,self)
 		return startState
 	def getEndState(self,startState):
-		agentState = AgentState(self.getBoolListWithoutTetro(),self.parent.fallingTetro.getStartBoxPointList(),self)
-		possibleEndStates = agentState.getPossibleEndStates()
-		possibleEndStateVals = [self.evaluateEndState(possibleEndState) for possibleEndState in possibleEndStates]
-		return possibleEndStates[possibleEndStateVals.index(max(possibleEndStateVals))]
+		state = State(self.getBoolListWithoutTetro(),self.parent.fallingTetro.getStartBoxPointList(),self)
+		#endStatesToVals = dict([(endState,self.evaluationFunction(endState)) for endState in state.getPossibleEndStates()])
+		possibleEndStates = state.getPossibleEndStates()
+		state.getPossibleEndStates2()
+		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates]
+		bestVal = max(possibleEndStateVals)
+		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
+		return random.choice(bestEndStates)
 		
 		
-	def evaluateEndState(self, endState):
-		boxes = endState.tetroBoxList
-		comboGrid = endState.getComboGrid()
-		bottomRowFilledBoxes = 0
-		for col in range(boardWidth):
-			if comboGrid[(col,boardDepth-1)]:
-				bottomRowFilledBoxes+=1
-		return bottomRowFilledBoxes
+		
+		
+		
 def getPath(startState,endState):
 		startCol,startRow = startState.tetroBoxList[0]
 		endCol,endRow = endState.tetroBoxList[0]
