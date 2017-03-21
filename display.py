@@ -3,6 +3,7 @@ from Tkinter import *
 from board import *
 import agent
 from agent import *
+import thread
 #Note: A "Box" is just a space. A "block" is a box that holds a piece. A "Tetro" is one of the four-blocked pieces in a Tetris game.
 #I need to work on the dimensions. I think I"m confusing rows and columns. It can either be [column,row] or [row][column]
 #Rows should count down.
@@ -12,7 +13,9 @@ class Display:
 		self.board = board
 		#self.input = KeyboardInput(self) #Make it a choice later
 		self.gameGrid = GameGrid(self)
+		#print "1"
 		self.input = Agent(self)
+		#print "2"
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		
@@ -31,8 +34,8 @@ class Display:
 		#Label(self.master,text="Click here for keyboard input").pack()
 		#master.bind("<Key>",self.pressedKey)
 		
-		
-		self.beginGame()
+		self.master.after(2000,self.beginGame)
+		#self.beginGame()
 		mainloop()
 	def rowCleared(self):
 		print "You've cleared a row!"
@@ -41,6 +44,9 @@ class Display:
 		#self.scoreLabel.config["text"]("Score: "+str(self.points))
 	def pressedKey(self,key):
 		keyChar = key.char
+		if keyChar in Direction.keyCharToDirection:
+			self.directionPressed(Direction.keyCharToDirection[keyChar])
+	def agentPressedKey(self,keyChar):
 		if keyChar in Direction.keyCharToDirection:
 			self.directionPressed(Direction.keyCharToDirection[keyChar])
 	def beginGame(self):self.endTurn()
@@ -97,6 +103,8 @@ class Display:
 							toBeReplaced.activate()
 				self.gameGrid.emptyRow(0) #Clearing the top row
 		self.addTetro(Tetro.randomTetro(self.board))
+		thread.start_new_thread(self.input.newTurn, ())
+		#self.input.newTurn()
 	def addTetro(self, tetro):
 		self.fallingTetro = tetro
 		self.fallingBlocks = []
@@ -132,6 +140,18 @@ class GameGrid:
 			for col in range(0,self.father.board.width):
 				boolGrid[row][col] = self.boxes[row][col].get()
 		return boolGrid
+	def getBoolGridDict(self):
+		#boolGrid = [[False for col in range(self.father.board.width)] for row in range(self.father.board.depth)]
+		boolGridDict = {}
+		for row in range(0,self.father.board.depth):
+			for col in range(0,self.father.board.width):
+				#if (col == 1):
+				#	print "Row: ",row
+				#	print "Col: ",col
+				boolGridDict[col,row] = self.boxes[row][col].get()
+		return boolGridDict
+		#return boolGrid
+		
 	def __str__(self):
 		boolGrid = self.getBoolGrid()
 		s=""

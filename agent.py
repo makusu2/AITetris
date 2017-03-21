@@ -19,24 +19,31 @@ class KeyboardInput(Input):
 		self.master.bind("<Key>",self.pressedKey)
 	def pressedKey(self,key):
 		self.parent.pressedKey(key)
+	def newTurn(self):
+		print "New turn started"#this is only used in agent
 class AgentState:
 	def __init__(self,boolGrid,tetroBoxList,parent):
 		#boolGrid is without the starting tetro
 		self.boolGrid = boolGrid #I think this is a list of coordinates
 		self.tetroBoxList = tetroBoxList
+		self.parent = parent
 	def getStartState(self):
 		return self.tetroBoxList
 	def getPossibleEndStates(self):
 		#First, get the tetro list if it were at the bottom of the map, even overlapping
 		possibleEndStates = []
 		bottomTetros = self.getPossibleTetrosAtBottom()
+		#print "bottomTetros: ",bottomTetros
+		#print "bottomTetros: ",bottomTetros
 		for bottomTetro in bottomTetros:
 			weGood = False
 			while not weGood:
 				weGood = True
 				for bottomTetroBox in bottomTetro:
 					#for bottomTetroBox in bottomTetroBoxes:
-					if bottomTetroBox in boolGrid.asList():
+					bottomTetroTuple = tuple(bottomTetroBox)
+					#print "boolGrid: ",self.boolGrid
+					if self.boolGrid[bottomTetroTuple]:# in boolGrid.asList():
 						weGood = False
 				if not weGood:
 					for i in range(0,len(bottomTetro)):
@@ -51,13 +58,21 @@ class AgentState:
 		leftMostCol = min(tetroBoxCols)
 		rightMostCol = max(tetroBoxCols)
 		downMostRow = max(tetroBoxRows)
+		#print "tetroBoxList: ",self.tetroBoxList
+		#print "downMostRow: ",downMostRow
 		tetroWidth = 1+rightMostCol-leftMostCol
-		boardDepth = self.parent.parent.depth
-		boardWidth = self.parent.parent.width
-		downPush = (boardDepth-downMostRow)+3#I think?
-		leftMostDownPlacements = [self.tetroBoxList[0]-leftMostCol,self.tetroBoxList[1]+downPush]
+		boardDepth = self.parent.parent.board.depth
+		boardWidth = self.parent.parent.board.width
+		downPush = (boardDepth-downMostRow)-1#I think?
+		leftMostDownPlacements = [[tetroBox[0]-leftMostCol,tetroBox[1]+downPush] for tetroBox in self.tetroBoxList]
 		rightMostPush = boardWidth-tetroWidth
-		tetrosAtBottom = [[leftMostDownPlacements[0]+rightPush,leftMostDownPlacements[1]] for rightPush in range(0,rightMostPush)]
+		tetrosAtBottom = []
+		for rightPush in range(0,rightMostPush):
+			currentTetroBoxes = []
+			for box in leftMostDownPlacements:
+				currentTetroBoxes.append([box[0]+rightPush,box[1]])
+			tetrosAtBottom.append(currentTetroBoxes)
+		#tetrosAtBottom = [[leftMostDownPlacements[0]+rightPush,leftMostDownPlacements[1]] for rightPush in range(0,rightMostPush)]
 		return tetrosAtBottom
 		
 class Agent(Input):
@@ -66,36 +81,49 @@ class Agent(Input):
 		self.grid = parent.gameGrid.getBoolGrid()
 		self.state = None
 	def newTurn(self):
-		self.grid = parent.gameGrid.getBoolGrid()
+		self.grid = self.parent.gameGrid.getBoolGrid()
+		#print "3"
 		self.state = AgentState(self.grid,self.parent.fallingTetro.getStartBoxPointList,self)
-		for action in self.getActions():
-			time.pause(0.5)
-			self.parent.pressedKey(action)
-			time.pause(0.5)
+		print "1"
+		actionsToTake = self.getActions()
+		for action in actionsToTake:
+			time.sleep(0.1)
+			print "2"
+			self.parent.agentPressedKey(action)
+			time.sleep(0.1)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = self.getStartState()
 		endState = self.getEndState(startState)
 		startPos = startState
-		return getPath(startState[0],endState[0])#indexing since both should now be coordinates
+		return getPath(startState[0],endState[0])#.append("d")#indexing since both should now be coordinates
 	#def getCost(self):
 	#	print "nope"
 		#Do we need this? Does Tetris really have a "cost" for the movement of tetros?
 	#def getHeuristic(self):
 	def getBoolListWithoutTetro(self):
-		tempGridList = [[boolSpot[0],boolSpot[1]] for boolSpot in boolGrid]
-		tetroList = self.parent.fallingTetro.getStartBoxPointList
+		#tempGridDict = {}
+		boolGridDict = self.parent.gameGrid.getBoolGridDict()
+		#for boolSpot in self.grid:
+		#	tempGridDict[(boolSpot[0],boolSpot[1]) = self.grid[boolSpot[0],boolSpot[1]]
+		#tempGridList = [[boolSpot[0],boolSpot[1]] for boolSpot in self.grid]
+		#tempGridDict = {[boolSpot[0],boolSpot[1]]:
+		tetroList = self.parent.fallingTetro.getStartBoxPointList()
 		for tetroSpot in tetroList:
-			tempGridList[tetroSpot] = False
-		return tempGridList
+			boolGridDict[tuple(tetroSpot)] = False
+		#tempGrid = []
+		
+		return boolGridDict
 	def getStartState(self):
 		tetroList = self.parent.fallingTetro.getStartBoxPointList()
-		startState = AgentState(self.getBoolListWithoutTetro,tetroList)
+		startState = AgentState(self.getBoolListWithoutTetro,tetroList,self)
 		return startState.getStartState()
 	def getEndState(self,startState):
 		agentState = AgentState(self.getBoolListWithoutTetro(),self.parent.fallingTetro.getStartBoxPointList(),self)
 		possibleEndStates = agentState.getPossibleEndStates()
+		#print "possibleEndStates: ",possibleEndStates
+		#print "tetro: ",self.parent.fallingTetro
 		possibleEndStateVals = [self.evaluateEndState(possibleEndState) for possibleEndState in possibleEndStates]
 		return possibleEndStates[possibleEndStateVals.index(max(possibleEndStateVals))]
 		
@@ -111,7 +139,7 @@ class Agent(Input):
 		#then get the best from each, then choose the best of the four rotations?
 		
 	def evaluateEndState(self, endState):
-		numRowsFilled = len([row for row in range(self.father.board.width) if self.parent.gameGrid.rowIsFull(row)])
+		numRowsFilled = len([row for row in range(self.parent.board.width) if self.parent.gameGrid.rowIsFull(row)])
 		return numRowsFilled
 	def getEachEndPlacement(self,startState):
 		tetro = self.parent.fallingTetro
@@ -152,5 +180,6 @@ def getPath(startState,endState):
 		while (currentState[1]<endState[1]):
 			actions.append("s")
 			currentState[1] = currentState[1]+1
+		actions.append("s")
 		return actions
 		
