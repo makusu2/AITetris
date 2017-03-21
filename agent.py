@@ -5,6 +5,7 @@ import Tkinter
 from Tkinter import *
 from board import *
 import time
+import copy
 class Input:
 	def __init__(self, parent):
 		self.parent = parent
@@ -50,7 +51,9 @@ class AgentState:
 						currentBox = bottomTetro[i]
 						bottomTetro[i] = [currentBox[0],currentBox[1]-1]
 			possibleEndStates.append(bottomTetro)
-		return possibleEndStates
+		#print "possibleEndStates: ",possibleEndStates
+		possibleEnds = [AgentState(self.boolGrid,possibleEndState,self.parent) for possibleEndState in possibleEndStates]
+		return possibleEnds#States
 		#Then, for each, move each box up until nothing overlaps
 	def getPossibleTetrosAtBottom(self):
 		tetroBoxCols = [dim[0] for dim in self.tetroBoxList]
@@ -74,6 +77,13 @@ class AgentState:
 			tetrosAtBottom.append(currentTetroBoxes)
 		#tetrosAtBottom = [[leftMostDownPlacements[0]+rightPush,leftMostDownPlacements[1]] for rightPush in range(0,rightMostPush)]
 		return tetrosAtBottom
+	def getComboGrid(self):
+		comboGrid = copy.copy(self.boolGrid)
+		for tetroBox in self.tetroBoxList:
+			comboGrid[tuple(tetroBox)] = True
+		#print "boolGrid: ",self.boolGrid
+		#print "bottomTetros: ",self.tetroBoxList
+		return comboGrid
 		
 class Agent(Input):
 	def __init__(self, parent):
@@ -95,9 +105,10 @@ class Agent(Input):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = self.getStartState()
-		endState = self.getEndState(startState)
+		endState = self.getEndState(startState).tetroBoxList
 		startPos = startState
-		return getPath(startState[0],endState[0])#.append("d")#indexing since both should now be coordinates
+		path = getPath(startState[0],endState[0])
+		return path#indexing since both should now be coordinates
 	#def getCost(self):
 	#	print "nope"
 		#Do we need this? Does Tetris really have a "cost" for the movement of tetros?
@@ -125,6 +136,8 @@ class Agent(Input):
 		#print "possibleEndStates: ",possibleEndStates
 		#print "tetro: ",self.parent.fallingTetro
 		possibleEndStateVals = [self.evaluateEndState(possibleEndState) for possibleEndState in possibleEndStates]
+		#print "possibleEndStates: ",possibleEndStates
+		#print "possibleEndStateVals: ",possibleEndStateVals
 		return possibleEndStates[possibleEndStateVals.index(max(possibleEndStateVals))]
 		
 		
@@ -139,9 +152,22 @@ class Agent(Input):
 		#then get the best from each, then choose the best of the four rotations?
 		
 	def evaluateEndState(self, endState):
+		comboGrid = endState.getComboGrid()
+		bottomRowFilledBoxes = 0
+		#for row in range(self.parent.board.width):
+		#print "11"
+		for col in range(self.parent.board.width):
+			if comboGrid[(col,self.parent.board.depth-1)]:
+				bottomRowFilledBoxes+=1
+		#print "22"
+		print "bottomRowFilledBoxes: ",bottomRowFilledBoxes
+		return bottomRowFilledBoxes
+		#feai
 		numRowsFilled = len([row for row in range(self.parent.board.width) if self.parent.gameGrid.rowIsFull(row)])
+		#completeBoolGrid = 
 		return numRowsFilled
-	def getEachEndPlacement(self,startState):
+	"""def getEachEndPlacement(self,startState):
+		print "1"
 		tetro = self.parent.fallingTetro
 		startBoxPlaces = tetro.getStartBoxPointList
 		startBoxCols = [startBoxPlace[0] for startBoxPlace in startBoxPlaces]
@@ -164,7 +190,8 @@ class Agent(Input):
 				else:
 					endPlacements.append(botBoxes)
 					break
-		return endPlacements
+		print "endPlacements: ",endPlacements
+		return endPlacements"""
 def getPath(startState,endState):
 		currentState = [startDim for startDim in startState]
 		actions = []

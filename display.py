@@ -34,7 +34,7 @@ class Display:
 		#Label(self.master,text="Click here for keyboard input").pack()
 		#master.bind("<Key>",self.pressedKey)
 		
-		self.master.after(2000,self.beginGame)
+		self.master.after(1,self.beginGame)
 		#self.beginGame()
 		mainloop()
 	def rowCleared(self):
