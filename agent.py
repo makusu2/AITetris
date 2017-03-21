@@ -6,6 +6,10 @@ from Tkinter import *
 from board import *
 import time
 import copy
+import makuUtil
+from makuUtil import Directions
+import conf
+from conf import *
 class Input:
 	def __init__(self, parent):
 		self.parent = parent
@@ -32,12 +36,10 @@ class AgentState:
 		def getPossibleTetrosAtBottom():
 			tetroBoxCols = [dim[0] for dim in self.tetroBoxList]
 			tetroBoxRows = [dim[1] for dim in self.tetroBoxList]
-			leftMostCol = min(tetroBoxCols)
-			rightMostCol = max(tetroBoxCols)
+			leftMostCol,rightMostCol = (min(tetroBoxCols),max(tetroBoxCols))
+			#rightMostCol = max(tetroBoxCols)
 			downMostRow = max(tetroBoxRows)
 			tetroWidth = 1+rightMostCol-leftMostCol
-			boardDepth = self.parent.parent.board.depth
-			boardWidth = self.parent.parent.board.width
 			downPush = (boardDepth-downMostRow)-1
 			leftMostDownPlacements = [[tetroBox[0]-leftMostCol,tetroBox[1]+downPush] for tetroBox in self.tetroBoxList]
 			rightMostPush = boardWidth-tetroWidth
@@ -49,23 +51,23 @@ class AgentState:
 				tetrosAtBottom.append(currentTetroBoxes)
 			return tetrosAtBottom
 		#First, get the tetro list if it were at the bottom of the map, even overlapping
-		possibleEndStates = []
+		possibleEndTetros = []
 		bottomTetros = getPossibleTetrosAtBottom()
 		for bottomTetro in bottomTetros:
-			weGood = False
-			while not weGood:
-				weGood = True
+			uncovered = False
+			while not uncovered:
+				uncovered = True
 				for bottomTetroBox in bottomTetro:
 					bottomTetroTuple = tuple(bottomTetroBox)
 					if self.boolGrid[bottomTetroTuple]:
-						weGood = False
-				if not weGood:
+						uncovered = False
+				if not uncovered:
 					for i in range(0,len(bottomTetro)):
 						currentBox = bottomTetro[i]
 						bottomTetro[i] = [currentBox[0],currentBox[1]-1]
-			possibleEndStates.append(bottomTetro)
-		possibleEnds = [AgentState(self.boolGrid,possibleEndState,self.parent) for possibleEndState in possibleEndStates]
-		return possibleEnds#States
+			possibleEndTetros.append(bottomTetro)
+		possibleEndStates = [AgentState(self.boolGrid,possibleEndTetro,self.parent) for possibleEndTetro in possibleEndTetros]
+		return possibleEndStates#States
 		
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
@@ -84,18 +86,18 @@ class Agent(Input):
 		actionsToTake = self.getActions()
 		for action in actionsToTake:
 			time.sleep(0.01)
-			self.parent.agentPressedKey(action)
+			self.parent.pressedKeyChar(action)
 			time.sleep(0.01)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = self.getStartState()
 		endState = self.getEndState(startState)
-		startPos = startState
+		#startPos = startState
 		path = getPath(startState,endState)
 		return path#indexing since both should now be coordinates
 	def getBoolListWithoutTetro(self):
-		boolGridDict = self.parent.gameGrid.getBoolGridDict()
+		boolGridDict = self.parent.gameGrid.asDict()
 		tetroList = self.parent.fallingTetro.getStartBoxPointList()
 		for tetroSpot in tetroList:
 			boolGridDict[tuple(tetroSpot)] = False
@@ -115,20 +117,17 @@ class Agent(Input):
 		boxes = endState.tetroBoxList
 		comboGrid = endState.getComboGrid()
 		bottomRowFilledBoxes = 0
-		for col in range(self.parent.board.width):
-			if comboGrid[(col,self.parent.board.depth-1)]:
+		for col in range(boardWidth):
+			if comboGrid[(col,boardDepth-1)]:
 				bottomRowFilledBoxes+=1
 		return bottomRowFilledBoxes
-		numRowsFilled = len([row for row in range(self.parent.board.width) if self.parent.gameGrid.rowIsFull(row)])
-		return numRowsFilled
 def getPath(startState,endState):
 		startCol,startRow = startState.tetroBoxList[0]
 		endCol,endRow = endState.tetroBoxList[0]
 		actions = []
-		horDiff = startCol-endCol
-		vertDiff = startRow-endRow
-		horKey = "a" if (horDiff>0) else "d"
-		verKey = "s"
+		horDiff,vertDiff = (startCol-endCol,startRow-endRow)
+		horKey = Directions.L if (horDiff>0) else Directions.R
+		verKey = Directions.D
 		for i in range(abs(horDiff)): actions.append(horKey)
 		for i in range(abs(vertDiff)+1): actions.append(verKey)
 		return actions

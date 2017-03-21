@@ -4,6 +4,10 @@ from board import *
 import agent
 from agent import *
 import thread
+import makuUtil
+from makuUtil import Directions
+import conf
+from conf import *
 #Note: A "Box" is just a space. A "block" is a box that holds a piece. A "Tetro" is one of the four-blocked pieces in a Tetris game.
 #I need to work on the dimensions. I think I"m confusing rows and columns. It can either be [column,row] or [row][column]
 #Rows should count down.
@@ -11,11 +15,9 @@ class Display:
 	def __init__(self, master=Tk(),board=Board()):
 		self.master = master
 		self.board = board
-		#self.input = KeyboardInput(self) #Make it a choice later
 		self.gameGrid = GameGrid(self)
 		#print "1"
-		self.input = Agent(self)
-		#print "2"
+		self.input = Agent(self)#KeyboardInput(self)
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		
@@ -31,45 +33,41 @@ class Display:
 		self.scoreLabel = Label(self.master,textvariable=self.scoreText)
 		self.scoreLabel.pack()
 		
-		#Label(self.master,text="Click here for keyboard input").pack()
-		#master.bind("<Key>",self.pressedKey)
-		
 		self.master.after(1,self.beginGame)
-		#self.beginGame()
 		mainloop()
 	def rowCleared(self):
 		print "You've cleared a row!"
 		self.points+=1
 		self.scoreText.set("Score: "+str(self.points))
-		#self.scoreLabel.config["text"]("Score: "+str(self.points))
 	def pressedKey(self,key):
-		keyChar = key.char
-		if keyChar in Direction.keyCharToDirection:
-			self.directionPressed(Direction.keyCharToDirection[keyChar])
-	def agentPressedKey(self,keyChar):
-		if keyChar in Direction.keyCharToDirection:
-			self.directionPressed(Direction.keyCharToDirection[keyChar])
+		self.pressedKeyChar(key.char)
+		#keyChar = key.char
+		#if keyChar in Directions.keyCharToDirection:
+		#	self.directionPressed(Directions.keyCharToDirection[keyChar])
+	def pressedKeyChar(self,keyChar):
+		if keyChar in Directions.toDirection:
+			self.directionPressed(Directions.toDirection[keyChar])
 	def beginGame(self):self.endTurn()
 	def directionPressed(self,d):
-		if d not in Direction.directions:
+		if d not in Directions.directions:
 			print "You pressed a direction, but it's invalid."
 			return
 		oldBoxes = self.fallingBlocks
 		downMost = max([oldBox.dim["row"] for oldBox in oldBoxes])
 		leftMost = min([oldBox.dim["col"] for oldBox in oldBoxes])
 		rightMost = max([oldBox.dim["col"] for oldBox in oldBoxes])
-		if (downMost == self.board.depth-1) & (d == Direction.D):
+		if (downMost == boardDepth-1) & (d == Directions.D):
 			self.endTurn()
 			return
-		elif (leftMost==0) & (d==Direction.L):
+		elif (leftMost==0) & (d==Directions.L):
 			print "User tried to go left at the furthest left possible"
 			return
-		elif (rightMost==self.board.width-1) & (d==Direction.R):
+		elif (rightMost==boardWidth-1) & (d==Directions.R):
 			print "User tried to go right at furthest right possible"
 			return
 		newBoxes = [self.getBoxToDirection(oldBox,d) for oldBox in oldBoxes]
 		if self.directionBlocked(oldBoxes,newBoxes):
-			if (d==Direction.D):
+			if (d==Directions.D):
 				self.endTurn()
 				return
 			else:
@@ -92,11 +90,11 @@ class Display:
 		return False
 	def endTurn(self): #This is called when a piece lands at the bottom
 		#This is not yet optimized. It is only for testing.
-		for row in range(1,self.board.depth):
+		for row in range(1,boardDepth):
 			if self.gameGrid.rowIsFull(row):
 				self.rowCleared()
 				for row2 in range(row,0,-1):
-					for col in range(0,self.board.width):
+					for col in range(boardWidth):
 						toBeReplaced = self.gameGrid.boxes[row2][col]
 						toReplace = self.gameGrid.boxes[row2-1][col]
 						if not (toBeReplaced.get() == toReplace.get()):
@@ -121,54 +119,51 @@ class Display:
 		return self.getBoxToDirection(oldBox,Direction.D)
 	def getBoxToDirection(self,oldBox,d):
 		dimensions = [oldBox.dim["col"],oldBox.dim["row"]]
-		return self.gameGrid.getBox([dimensions[0]+Direction.colMod[d],dimensions[1]+Direction.rowMod[d]])
+		return self.gameGrid.getBox([dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]])
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
 		self.master = master
 		self.father = father
-		self.boxes = [[Box(self.master,row,col) for col in range(self.father.board.width)] for row in range(self.father.board.depth)]
-		for row in range(0,self.father.board.depth):
-			for col in range(0,self.father.board.width):
+		self.boxes = [[Box(self.master,row,col) for col in range(boardWidth)] for row in range(boardDepth)]
+		for row in range(boardDepth):
+			for col in range(boardWidth):
 				self.boxes[row][col].grid()
+	#def asList(self):
 		
 	def printGrid(self):
 		print(str(self))
 	def getBoolGrid(self):
-		boolGrid = [[False for col in range(self.father.board.width)] for row in range(self.father.board.depth)]
-		for row in range(0,self.father.board.depth):
-			for col in range(0,self.father.board.width):
+		boolGrid = [[False for col in range(boardWidth)] for row in range(boardDepth)]
+		for row in range(boardDepth):
+			for col in range(boardWidth):
 				boolGrid[row][col] = self.boxes[row][col].get()
 		return boolGrid
-	def getBoolGridDict(self):
+	def asDict(self):
 		#boolGrid = [[False for col in range(self.father.board.width)] for row in range(self.father.board.depth)]
 		boolGridDict = {}
-		for row in range(0,self.father.board.depth):
-			for col in range(0,self.father.board.width):
-				#if (col == 1):
-				#	print "Row: ",row
-				#	print "Col: ",col
+		for row in range(boardDepth):
+			for col in range(boardWidth):
 				boolGridDict[col,row] = self.boxes[row][col].get()
 		return boolGridDict
-		#return boolGrid
 		
 	def __str__(self):
 		boolGrid = self.getBoolGrid()
 		s=""
-		for row in range(0,self.father.board.depth):
-			for col in range(0,self.father.board.width):
+		for row in range(boardDepth):
+			for col in range(boardWidth):
 				s+=str(self.boxes[row][col])
 			s+="\n"
 		return s
 	def rowIsFull(self,row):
 		boolGrid = self.getBoolGrid()
-		for col in range(0,self.father.board.width):
+		for col in range(boardWidth):
 			if not boolGrid[row][col]: return False
 		return True
 	def getBox(self, dimensions):
 		return self.boxes[dimensions[1]][dimensions[0]]
 	def emptyRow(self, row):
-		for col in range(0,self.father.board.width):
+		for col in range(boardWidth):
 			if self.boxes[row][col].get():
 				self.boxes[row][col].activate()
 class Box:
@@ -188,12 +183,4 @@ class Box:
 	def __str__(self):
 		return "#" if self.get() else "0"
 	def activate(self): self.checkBox.invoke()
-class Direction:
-	D = "Down"
-	L = "Left"
-	R = "Right"
-	directions = [D,L,R]
-	rowMod = {D:1,L:0,R:0}
-	colMod = {D:0,L:-1,R:1}
-	keyCharToDirection = {'a':L,'A':L,'d':R,'D':R,'s':D,'S':D}
 	

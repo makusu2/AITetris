@@ -1,9 +1,11 @@
 import random
+import conf
+from conf import *
 class Board:
-	def __init__(self,depth=20,width=10):
-		self.depth = depth
-		self.width = width
-		self.tetroStartPoint=(self.width/2,0)
+	def __init__(self,depth=boardDepth,width=boardWidth):
+		#self.depth = depth
+		#self.width = width
+		self.tetroStartPoint=(boardWidth/2,0)
 class Tetro:#"Tetronimo" is the name of the combination of four blocks
 	types = ["J","L","O","T","S","Z","I"]
 	def __init__(self, type, board):
