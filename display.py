@@ -84,43 +84,58 @@ class Display:
 	def rotate(self):
 		def getRotatedCoords():
 			def moveCoordsForLegality(newBoxes):
-				def getMovedCoords(movedBoxes):
-					print "movedBoxes: ",movedBoxes
-					newMovedBox = {"up": [[movedBox[0],movedBox[1]-1] for movedBox in movedBoxes["up"]],
-						"down":[[movedBox[0],movedBox[1]+1] for movedBox in movedBoxes["down"]],
-						"left":[[movedBox[0]-1,movedBox[1]] for movedBox in movedBoxes["left"]],
-						"right":[[movedBox[0]+1,movedBox[1]] for movedBox in movedBoxes["right"]]}
-					return newMovedBox
+				def getMovedCoords(movedToDirection):
+					newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
+					#for d in Directions.allDirections:
+					#	newMovedToDirection[d] = [[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]]
+					#newMovedBox = {"up": [[movedBox[0],movedBox[1]-1] for movedBox in movedBoxes["up"]],
+					#	"down":[[movedBox[0],movedBox[1]+1] for movedBox in movedBoxes["down"]],
+					#	"left":[[movedBox[0]-1,movedBox[1]] for movedBox in movedBoxes["left"]],
+					#	"right":[[movedBox[0]+1,movedBox[1]] for movedBox in movedBoxes["right"]]}
+					#return newMovedBox
+					return newMovedToDirection
 				boolDict = self.gameGrid.asDict()
 				conflicts = False
-				movedBox = {"up": [[newBox[0],newBox[1]] for newBox in newBoxes],
-					"down":[[newBox[0],newBox[1]] for newBox in newBoxes],
-					"left":[[newBox[0],newBox[1]] for newBox in newBoxes],
-					"right":[[newBox[0],newBox[1]] for newBox in newBoxes]}
+				movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
+				#for d in Directions.allDirections:
+				#	movedToDirection[d] = [[newTetro[0],newTetro[1]] for newTetro in newBoxes]
+					#movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
+				#movedBox = {"up": [[newBox[0],newBox[1]] for newBox in newBoxes],
+				#	"down":[[newBox[0],newBox[1]] for newBox in newBoxes],
+				#	"left":[[newBox[0],newBox[1]] for newBox in newBoxes],
+				#	"right":[[newBox[0],newBox[1]] for newBox in newBoxes]}
 				while True:
-					conflicts = False
-					print "mvoedBs", movedBox
-					for newBox in movedBox["up"]:
+					for d in movedToDirection:
+						conflicts = False
+						for newTetro in movedToDirection[d]:
+							if self.coordsAreIllegal(tuple(newTetro)):
+								conflicts = True
+						if not conflicts:
+							return movedToDirection[d]
+					movedToDirection = getMovedCoords(movedToDirection)
+					"""conflicts = False
+					print "mvoedBs", movedToDirection
+					for newBox in movedToDirection["up"]:
 						if self.coordsAreIllegal(tuple(newBox)):
 							conflicts = True
-					if not conflicts: return movedBox["up"]
+					if not conflicts: return movedToDirection["up"]
 					conflicts = False
-					for newBox in movedBox["down"]:
+					for newBox in movedToDirection["down"]:
 						if self.coordsAreIllegal(tuple(newBox)):
 							conflicts = True
-					if not conflicts: return movedBox["down"]
+					if not conflicts: return movedToDirection["down"]
 					conflicts = False
-					for newbox in movedBox["left"]:
+					for newbox in movedToDirection["left"]:
 						if self.coordsAreIllegal(tuple(newBox)):
 							conflicts = True
-						if not conflicts: return movedBox["left"]
+						if not conflicts: return movedToDirection["left"]
 					conflicts = False
-					for newbox in movedBox["right"]:
+					for newbox in movedToDirection["right"]:
 						if self.coordsAreIllegal(tuple(newBox)):
 							conflicts = True
-						if not conflicts: return movedBox["right"]
+						if not conflicts: return movedToDirection["right"]
 					conflicts = False
-					movedBox = getMovedCoords(movedBox)
+					movedToDirection = getMovedCoords(movedToDirection)"""
 					
 			boxes = [[box[0],box[1]] for box in self.fallingBlocks]
 			
@@ -200,7 +215,7 @@ class Display:
 		dimensions = [oldBox.dim["col"],oldBox.dim["row"]]
 		return self.gameGrid.getBox([dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]])
 	def coordsAreIllegal(self,coords):
-		print "checking coords: ",coords
+		#print "checking coords: ",coords
 		#for coord in coords:
 		if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.gameGrid.asDict()[tuple(coords)]:
 			#print "coords are illegal."
