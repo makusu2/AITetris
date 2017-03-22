@@ -8,6 +8,7 @@ import makuUtil
 from makuUtil import Directions
 import conf
 from conf import *
+import math
 #Note: A "Box" is just a space. A "block" is a box that holds a piece. A "Tetro" is one of the four-blocked pieces in a Tetris game.
 #I need to work on the dimensions. I think I"m confusing rows and columns. It can either be [column,row] or [row][column]
 #Rows should count down.
@@ -17,7 +18,7 @@ class Display:
 		self.board = board
 		self.gameGrid = GameGrid(self)
 		#print "1"
-		self.input = Agent(self)#KeyboardInput(self)
+		self.input = KeyboardInput(self)#Agent(self)#KeyboardInput(self)
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		
@@ -45,13 +46,17 @@ class Display:
 		#if keyChar in Directions.keyCharToDirection:
 		#	self.directionPressed(Directions.keyCharToDirection[keyChar])
 	def pressedKeyChar(self,keyChar):
-		if keyChar in Directions.toDirection:
-			self.directionPressed(Directions.toDirection[keyChar])
+		if keyChar in Directions.direDict:
+			self.directionPressed(Directions.direDict[keyChar])
 	def beginGame(self):self.endTurn()
 	def directionPressed(self,d):
 		if d not in Directions.directions:
-			print "You pressed a direction, but it's invalid."
-			return
+			if d in Directions.rotations:
+				self.rotate()
+				return
+			else:
+				print "You pressed a direction, but it's invalid."
+				return
 		oldBoxes = self.fallingBlocks
 		downMost = max([oldBox.dim["row"] for oldBox in oldBoxes])
 		leftMost = min([oldBox.dim["col"] for oldBox in oldBoxes])
@@ -76,8 +81,63 @@ class Display:
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
 		self.fallingBlocks = newBoxes
-	#def rotate(self):
-		
+	def rotate(self):
+		def getRotatedCoords():
+			def moveCoordsForLegality(newBoxes):
+				boolDict = self.gameGrid.asDict()
+				conflicts = False
+				for newBox in newBoxes: 
+					if boolDict[tuple(newBox)]: 
+						conflicts = True
+				if not conflicts: return newBoxes
+				movedBox = {"up": [[newBox[0],newBox[1]-1] for newBox in newBoxes],"down":[[newBox[0],newBox[1]+1] for newBox in newBoxes]}
+				#movedBox["up"] = [[newBox[0],newBox[1]-1] for newBox in newBoxes]
+				#movedBox["down"] = [[newBox[0],newBox[1]+1] for newBox in newBoxes]
+				
+				while True:
+					conflicts = False
+					for newBox in movedBox["up"]:
+						if boolDict[tuple(newBox)]:
+							conflicts = True
+					if not conflicts: return movedBox["up"]
+					conflicts = False
+					for newBox in movedBox["down"]:
+						if boolDict[tuple(newBox)]:
+							conflicts = True
+					if not conflicts: return movedBox["down"]
+			boxes = [[box[0],box[1]] for box in self.fallingBlocks]
+			
+			origin = boxes[0]
+			newCoords = []
+			for box in boxes:
+				horDiff = box[0]-origin[0]
+				vertDiff = origin[1]-box[1]
+				newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
+				newCoords.append(newCoord)
+			return newCoords#moveCoordsForLegality(newCoords)
+				#newBox = self.gameGrid.getBox([box[1],box[0]])
+				#newBoxes.append(newBox)
+			"""#print "origin: ",origin.dim
+			newBoxes = []
+			for box in boxes:
+				print "box: ",box
+				coordDiff = [origin[0]-box[0],box[1]-origin[1]]
+				print "coordDiff: ",coordDiff
+				newBox = coordDiff
+				cosPart = math.cos(math.pi/2)
+				sinPart = math.sin(math.pi/2)
+				newBox = (int(round(float(newBox[0])*cosPart-float(newBox[1])*sinPart)),int(round(float(newBox[0])*sinPart+float(newBox[1])*cosPart)))
+				print "newBox: ",newBox
+				newBoxes.append(newBox)
+			return moveCoordsForLegality(newBoxes)
+			"""
+		newCoords = getRotatedCoords()
+		newBoxes = [self.gameGrid.boxes[newCoord[1]][newCoord[0]] for newCoord in newCoords]
+		oldBoxes = self.fallingBlocks
+		self.fallingBlocks = newBoxes
+		for oldBox in oldBoxes: oldBox.activate()
+		for newBox in newBoxes: newBox.activate()
+			#newBox[1]
 		#Since tetris games have different rules for rotation,
 		#we will have to press rotate, then get a screenshot for the new board.
 		#Also, we will only rotate in one direction.
@@ -184,4 +244,6 @@ class Box:
 	def __str__(self):
 		return "#" if self.get() else "0"
 	def activate(self): self.checkBox.invoke()
+	def __getitem__(self,b):
+		return tuple([self.dim["col"],self.dim["row"]])[b]
 	

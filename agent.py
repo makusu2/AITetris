@@ -74,13 +74,7 @@ class State:
 		def isTerminalState(state):
 			for box in state.tetroBoxList:
 				if (box[1]+1)>=boardDepth or state.boolGrid[(box[0],box[1]+1)]:
-				#	print "first"
-					#print "terminal state: \n",str(state)
-					#print "terminal state score: ",state.evaluationFunction()
 					return True
-				#elif state.boolGrid[(box[0],box[1]+1)]:
-				#	print "second"
-				#	return True
 			return False
 		#So, frontier should be list of box locations instead
 		startBoxes = tuple([tuple(box) for box in self.tetroBoxList])
@@ -89,19 +83,12 @@ class State:
 		boxesToState = {startBoxes:self}
 		terminalStates = []
 		while frontier:
-			#print "frontier: ",frontier
 			front = frontier.pop()
-			#print "Front: ",front
 			frontState = boxesToState[front]
-			#print "frontState: \n",frontState
 			oldActions = list(explored[front])
-			#print "oldActions: ",oldActions
 			newActions = frontState.getLegalActions()
-			#print "newActions: ",newActions
 			for newAction in newActions:
-				#print " newAction: ",newAction
 				newState = frontState.generateSuccessor(newAction)
-				#print " newState: \n",str(newState)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
 				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
@@ -109,14 +96,6 @@ class State:
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
 						terminalStates.append(newState)
-			#time.sleep(1)
-		#time.sleep(5)
-		#terminalStrings = [str(ts) for ts in terminalStates]
-		#for ts in terminalStrings:
-		#	print ts
-		#	print "\n\n"
-		#print "terminalStates: ",terminalStates
-		#print "\n\n\n\n\n\n\n\n"
 		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
@@ -132,7 +111,6 @@ class State:
 				if comboGrid[(col,row)]:
 					height = float(boardDepth - row)
 					runningScore+=(1/height)
-		#print "score: ",runningScore
 		return runningScore
 	def getLegalActions(self):
 		actions = copy.copy(Directions.directions)
@@ -141,14 +119,8 @@ class State:
 				newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
 				newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
 				if newBoxIllegal or self.boolGrid[newBox]:
-					#if self.boolGrid[tuple(box)]:
-					#	print "THAT'S WHY!NOI@NOIN!O"
 					if direction in actions:
 						actions.remove(direction)
-				#newBoxBreaksRules = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (self.boolGrid[newBox]))
-				#if newBoxBreaksRules:
-				#	actions.remove(direction)
-		#print "legalActions: ",actions
 		return actions
 	def generateSuccessor(self,direction):
 		newBoolGrid = copy.copy(self.boolGrid)
