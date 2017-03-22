@@ -73,10 +73,14 @@ class State:
 	def getPossibleEndStates2(self):
 		def isTerminalState(state):
 			for box in state.tetroBoxList:
-				if (box[1]+1)>=boardDepth:
+				if (box[1]+1)>=boardDepth or state.boolGrid[(box[0],box[1]+1)]:
+				#	print "first"
+					#print "terminal state: \n",str(state)
+					#print "terminal state score: ",state.evaluationFunction()
 					return True
-				elif state.boolGrid[(box[0],box[1]+1)]:
-					return True
+				#elif state.boolGrid[(box[0],box[1]+1)]:
+				#	print "second"
+				#	return True
 			return False
 		#So, frontier should be list of box locations instead
 		startBoxes = tuple([tuple(box) for box in self.tetroBoxList])
@@ -84,41 +88,35 @@ class State:
 		explored = {startBoxes:tuple()}
 		boxesToState = {startBoxes:self}
 		terminalStates = []
-		#print "1"
 		while frontier:
-			#print "frontLength: ",len(frontier)
-			#print "1"
 			#print "frontier: ",frontier
 			front = frontier.pop()
-			#print "frontier: ",frontier
-			#print "boxesToState: ",boxesToState
+			#print "Front: ",front
 			frontState = boxesToState[front]
-			#print "2"
-			#print "frontier2: ",frontier
-			#time.sleep(0.5)
-			#if front in explored: continue
+			#print "frontState: \n",frontState
 			oldActions = list(explored[front])
-			for newAction in frontState.getLegalActions():
+			#print "oldActions: ",oldActions
+			newActions = frontState.getLegalActions()
+			#print "newActions: ",newActions
+			for newAction in newActions:
+				#print " newAction: ",newAction
 				newState = frontState.generateSuccessor(newAction)
+				#print " newState: \n",str(newState)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
 				if not newBoxes in explored:
-					#print "oldActions: ",oldActions
-					#print "newAction: ",newAction
-					#print "oldActionsType: ",type(oldActions)
-					#print "newActionType: ",type(newAction)
-					#appendation = oldActions+[newAction]
-					#print "appendation: ",appendation
-					#if not oldActions:
-					#	appendation = [newAction]
-					#newStateTuple = tuple(appendation)
 					explored[newBoxes] = tuple(oldActions+[newAction])
 					boxesToState[newBoxes] = newState
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
 						terminalStates.append(newState)
-			#print "frontierAtEnd: ",frontier
+			#time.sleep(1)
+		#time.sleep(5)
+		#terminalStrings = [str(ts) for ts in terminalStates]
+		#for ts in terminalStrings:
+		#	print ts
+		#	print "\n\n"
 		#print "terminalStates: ",terminalStates
-		#print "2"
+		#print "\n\n\n\n\n\n\n\n"
 		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
@@ -134,35 +132,40 @@ class State:
 				if comboGrid[(col,row)]:
 					height = float(boardDepth - row)
 					runningScore+=(1/height)
+		#print "score: ",runningScore
 		return runningScore
 	def getLegalActions(self):
 		actions = copy.copy(Directions.directions)
 		for direction in Directions.directions:
 			for box in self.tetroBoxList:
-				newBox = (box[0]+Directions.rowMod[direction],box[1]+Directions.colMod[direction])
+				newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
 				newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
 				if newBoxIllegal or self.boolGrid[newBox]:
+					#if self.boolGrid[tuple(box)]:
+					#	print "THAT'S WHY!NOI@NOIN!O"
 					if direction in actions:
 						actions.remove(direction)
 				#newBoxBreaksRules = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (self.boolGrid[newBox]))
 				#if newBoxBreaksRules:
 				#	actions.remove(direction)
+		#print "legalActions: ",actions
 		return actions
 	def generateSuccessor(self,direction):
 		newBoolGrid = copy.copy(self.boolGrid)
-		newBoxes = [[box[0]+Directions.rowMod[direction],box[1]+Directions.colMod[direction]] for box in self.tetroBoxList]
+		newBoxes = [[box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction]] for box in self.tetroBoxList]
 		newState = State(newBoolGrid,newBoxes,self.parent)
 		return newState
 	def __str__(self):
 		s = ""
-		for col in range(boardWidth):
-			for row in range(boardDepth):
+		for row in range(boardDepth):
+			for col in range(boardWidth):
 				if [col,row] in self.tetroBoxList: #Is this list and not tuple?
 					s+='T'
 				elif self.boolGrid[(col,row)]:
 					s+='#'
 				else:
 					s+='0'
+			s+="\n"
 		return s
 		
 class Agent(Input):
@@ -199,7 +202,7 @@ class Agent(Input):
 	def getEndState(self,startState):
 		state = State(self.getBoolListWithoutTetro(),self.parent.fallingTetro.getStartBoxPointList(),self)
 		#endStatesToVals = dict([(endState,self.evaluationFunction(endState)) for endState in state.getPossibleEndStates()])
-		possibleEndStates = state.getPossibleEndStates()
+		possibleEndStates = state.getPossibleEndStates2()
 		state.getPossibleEndStates2()
 		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates]
 		bestVal = max(possibleEndStateVals)
