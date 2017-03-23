@@ -30,15 +30,17 @@ class KeyboardInput(Input):
 		print "New turn started"#this is only used in agent
 
 class State:
-	def __init__(self,boolGrid,tetroBoxList,parent):
+	def __init__(self,boolGrid,tetroBoxList,parent,depth=0):
 		#boolGrid is without the starting tetro
 		self.boolGrid = boolGrid #This is a dict
 		self.tetroBoxList = tetroBoxList
 		self.parent = parent
+	def __getitem__(self,index):
+		return self.boolGrid[tuple(index)]
 	def getPossibleEndStates(self):
 		def isTerminalState(state):
 			for box in state.tetroBoxList:
-				if (box[1]+1)>=boardDepth or state.boolGrid[(box[0],box[1]+1)]:
+				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
 					return True
 			return False
 		#So, frontier should be list of box locations instead
@@ -115,7 +117,7 @@ class State:
 			for col in range(boardWidth):
 				if [col,row] in self.tetroBoxList: #Is this list and not tuple?
 					s+='T'
-				elif self.boolGrid[(col,row)]:
+				elif self[col,row]:
 					s+='#'
 				else:
 					s+='0'

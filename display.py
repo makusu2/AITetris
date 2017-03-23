@@ -52,9 +52,9 @@ class Display:
 				print "You pressed a direction, but it's invalid."
 				return
 		oldBoxes = self.fallingBlocks
-		downMost = max([oldBox.dim["row"] for oldBox in oldBoxes])
-		leftMost = min([oldBox.dim["col"] for oldBox in oldBoxes])
-		rightMost = max([oldBox.dim["col"] for oldBox in oldBoxes])
+		downMost = max([oldBox.row for oldBox in oldBoxes])
+		leftMost = min([oldBox.col for oldBox in oldBoxes])
+		rightMost = max([oldBox.col for oldBox in oldBoxes])
 		if (downMost == boardDepth-1) & (d == Directions.D):
 			self.endTurn()
 			return
@@ -78,7 +78,7 @@ class Display:
 	def rotate(self):
 		boolGrid = self.gameGrid.asDict()
 		newCoords = makuUtil.getRotatedCoords(boolGrid,self.fallingBlocks)
-		newBoxes = [self.gameGrid.boxes[newCoord[1]][newCoord[0]] for newCoord in newCoords]
+		newBoxes = [self.gameGrid.boxes[tuple(newCoord)] for newCoord in newCoords]
 		oldBoxes = self.fallingBlocks
 		self.fallingBlocks = newBoxes
 		for oldBox in oldBoxes: oldBox.activate()
@@ -87,7 +87,7 @@ class Display:
 	def directionBlocked(self,oldBoxes,newBoxes):
 		for newBox in newBoxes:
 			if newBox not in oldBoxes:
-				if newBox.get():
+				if bool(newBox):#.get():
 					return True
 		return False
 	def endTurn(self): #This is called when a piece lands at the bottom
@@ -97,9 +97,9 @@ class Display:
 				self.rowCleared()
 				for row2 in range(row,0,-1):
 					for col in range(boardWidth):
-						toBeReplaced = self.gameGrid.boxes[row2][col]
-						toReplace = self.gameGrid.boxes[row2-1][col]
-						if not (toBeReplaced.get() == toReplace.get()):
+						toBeReplaced = self.gameGrid.boxes[col,row2]
+						toReplace = self.gameGrid.boxes[col,row2-1]
+						if not (bool(toBeReplaced) == bool(toReplace)):
 							toBeReplaced.activate()
 				self.gameGrid.emptyRow(0) #Clearing the top row
 		self.addTetro(Tetro.randomTetro(self.board))
@@ -109,74 +109,52 @@ class Display:
 		self.fallingTetro = tetro
 		self.fallingBlocks = []
 		for startingPos in tetro.spaces:
-			currentBox = self.getBox(startingPos)
-			if currentBox.get():#If there's already something there
-				print "A tetro should have been added, but there was a box already checked."
+			currentBox = self.gameGrid[startingPos]
+			if bool(currentBox):
+				self.endGame()
 			currentBox.activate()
 			self.fallingBlocks.append(currentBox)
 		self.fallingTetro = tetro
-	def getBox(self, dimensions): 
-		return self.gameGrid.getBox(dimensions)
 	def getBoxDown(self, oldBox):
 		return self.getBoxToDirection(oldBox,Direction.D)
 	def getBoxToDirection(self,oldBox,d):
-		dimensions = [oldBox.dim["col"],oldBox.dim["row"]]
-		return self.gameGrid.getBox([dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]])
+		dimensions = [oldBox.col,oldBox.row]
+		return self.gameGrid[dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]]
+	def endGame(self):
+		print "YOU LOSE!"
+		sleep(10)
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
 		self.master = master
 		self.father = father
-		self.boxes = [[Box(self.master,row,col) for col in range(boardWidth)] for row in range(boardDepth)]
+		self.boxes = {(col,row):Box(self.master,row,col) for col in range(boardWidth) for row in range(boardDepth)}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
-				self.boxes[row][col].grid()
-	#def asList(self):
-		
-	def printGrid(self):
-		print(str(self))
-	def getBoolGrid(self):
-		boolGrid = [[False for col in range(boardWidth)] for row in range(boardDepth)]
-		for row in range(boardDepth):
-			for col in range(boardWidth):
-				boolGrid[row][col] = self.boxes[row][col].get()
-		return boolGrid
-	#	return boolGridDict
+				self.boxes[col,row].grid()
 	def __getitem__(self,index):
-		return self.boxes[index[1]][index[0]].get()
-		boolGridDict = {}
-		for row in range(boardDepth):
-			for col in range(boardWidth):
-				boolGridDict[col,row] = self.boxes[row][col].get()
-		return boolGridDict[index]
+		return self.boxes[tuple(index)]
 	def asDict(self): #THIS WILL BE WITHOUT TETRO
 		boolGridDict = {}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
-				boolGridDict[col,row] = self.boxes[row][col].get()
+				boolGridDict[col,row] = self[col,row]
 		for box in self.father.fallingBlocks:
-			boxCoords = (box.dim["col"],box.dim["row"])
-			boolGridDict[boxCoords] = False
+			boolGridDict[(box.col,box.row)] = False
 		return boolGridDict
 	def __str__(self):
-		boolGrid = self.getBoolGrid()
 		s=""
 		for row in range(boardDepth):
 			for col in range(boardWidth):
-				s+=str(self.boxes[row][col])
+				s+=str(self[col,row])
 			s+="\n"
 		return s
 	def rowIsFull(self,row):
-		boolGrid = self.getBoolGrid()
-		for col in range(boardWidth):
-			if not boolGrid[row][col]: return False
-		return True
-	def getBox(self, dimensions):
-		return self.boxes[dimensions[1]][dimensions[0]]
+		return not (False in [bool(self[col,row]) for col in range(boardWidth)])
 	def emptyRow(self, row):
 		for col in range(boardWidth):
-			if self.boxes[row][col].get():
-				self.boxes[row][col].activate()
+			if bool(self.boxes[col,row]):#.get():
+				self.boxes[col,row].activate()
 class Box:
 	def __init__(self,master,row,col):
 		self.intVar = IntVar()
@@ -184,16 +162,16 @@ class Box:
 		self.master = master
 		self.checkBox = Checkbutton(self.master,variable=self.intVar,command=self.hitBox)
 		self.checkBox.var = self.intVar
-		self.dim={"row":row,"col":col}
-	def get(self):
-		return self.isChecked
+		self.col = col
+		self.row = row
 	def grid(self):
-		self.checkBox.grid(row=self.dim["row"],column=self.dim["col"])
+		self.checkBox.grid(row=self.row,column=self.col)
 	def hitBox(self):
 		self.isChecked = not self.isChecked
 	def __str__(self):
-		return "#" if self.get() else "0"
+		return "#" if bool(self) else "0"
 	def activate(self): self.checkBox.invoke()
 	def __getitem__(self,b):
-		return tuple([self.dim["col"],self.dim["row"]])[b]
-	
+		return tuple([self.col,self.row])[b]
+	def __nonzero__(self):
+		return self.isChecked
