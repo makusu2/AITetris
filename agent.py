@@ -32,9 +32,11 @@ class KeyboardInput(Input):
 class State:
 	def __init__(self,boolGrid,tetroBoxList,parent,depth=0):
 		#boolGrid is without the starting tetro
+		#print "creating state with depth of ",depth
 		self.boolGrid = boolGrid #This is a dict
 		self.tetroBoxList = tetroBoxList
 		self.parent = parent
+		self.depth = depth
 	def __getitem__(self,index):
 		return self.boolGrid[tuple(index)]
 	def getPossibleEndStates(self,depth=0):
@@ -50,10 +52,15 @@ class State:
 		boxesToState = {startBoxes:self}
 		terminalStates = []
 		while frontier:
+			#print "1"
 			front = frontier.popleft()
+			#print "2"
 			frontState = boxesToState[front]
+			#print "3"
 			oldActions = list(explored[front])
+			#print "4"
 			newActions = frontState.getLegalActions()
+			#print "5"
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
@@ -63,6 +70,7 @@ class State:
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
 						terminalStates.append(newState)
+		#print "finished"
 		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
@@ -70,6 +78,7 @@ class State:
 			comboGrid[tuple(tetroBox)] = True
 		return comboGrid
 	def evaluationFunction(self):
+		#print "eval1"
 		boxes = self.tetroBoxList
 		comboGrid = self.getComboGrid()
 		runningScore = 0.0
@@ -78,8 +87,11 @@ class State:
 				if comboGrid[(col,row)]:
 					height = float(boardDepth - row)
 					runningScore+=(1/height)
+		#print "eval2"
+		runningScore+=self.parent.parent.points * boardWidth * 2
 		return runningScore
 	def getLegalActions(self):
+		#print "boolGrid: ",self.boolGrid
 		originalActions = [d for d in Directions.legalMoves]
 		actions = [d for d in Directions.legalMoves]
 		for direction in originalActions:
@@ -96,6 +108,8 @@ class State:
 			else:
 				for box in self.tetroBoxList:
 					newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
+					#print "direction: ",direction
+					#print "newBox: ",newBox
 					if makuUtil.coordsAreIllegal(self.boolGrid,newBox):
 						if direction in actions:
 							actions.remove(direction)
@@ -124,14 +138,52 @@ class State:
 			s+="\n"
 		return s
 	def expectimax(self):
-		if self.depth == maxDepth:
+		#print self
+		#print "depth: ",self.depth
+		#maybe increment depth here?
+		if self.depth >= maxDepth:
+			#print "yep"
 			return self.evaluationFunction()
 		else:
-			possibleNewTurns = [self.generateNewTurn(tetro) for tetro in Tetro.types]
-			possibleNewEndStates = [turn.getPossibleEndStates(depth=self.depth+1) for turn in possibleNewTurns]
+			possibleNewTetros = [Tetro(tetro,self.parent.parent.board) for tetro in Tetro.types]
+			#print "nope"
+			possibleNewTurns = [self.generateNewTurn(tetro) for tetro in possibleNewTetros]
+			#print "1"
+			#print "lenPossibleNewTurns: ",len(possibleNewTurns)
+			possibleNewTurnVals = []
+			for possibleNewTurn in possibleNewTurns:
+				possibleNewEndStatesInNewTurn = possibleNewTurn.getPossibleEndStates()
+				expectivalSum = 0
+				expectivalCounter = 0
+				for possibleNewEndStateInNewTurn in possibleNewEndStatesInNewTurn:
+					possibleNewEndStateInNewTurn.depth = self.depth+1
+					expectival = possibleNewEndStateInNewTurn.expectimax()
+					expectivalSum += expectival
+					expectivalCounter+=1
+				expectivalAvg = 0 if (expectivalCounter == 0) else float(expectivalSum)/expectivalCounter
+				possibleNewTurnVals.append(expectivalAvg)
+			expectivalAvg = makuUtil.avg(possibleNewTurnVals)
+			return expectivalAvg
+				
+			#possibleNewEndStates = [turn.getPossibleEndStates(depth=self.depth+1) for turn in possibleNewTurns]
+			#for possibleNewEndState in possibleNewEndStates:
+			#	if not possibleNewEndState:
+			#		return 0 #means something fukd up
+			##print "len possibleNewEndStates: ",len(possibleNewEndStates)
+			#print "len possibleNewEndStates[0]: ",len(possibleNewEndStates[0])
+			#print "2"
 			#should we use expectimax instead in the next line?
+			#if not possibleNewEndStates:
+			#	return 0 #Dunno why we have to do this
+			#for possibleNewEndState in possibleNewEndStates:
+			#	expectiVals = [successorState.expectimax() for successorState in possibleNewEndState
 			possibleNewEndStatesVals = [[state.expectimax() for state in states] for states in possibleNewEndStates]
+			#print "possibleNewEndStatesVals: ",possibleNewEndStatesVals
+			#if not possibleNewEndStatesVals:
+			#	return 0 #Dunno why we have to do this
 			bestNewEndStatesVals = [max(vals) for vals in possibleNewEndStatesVals]
+			#if not bestNewEndStatesVals:
+			#	return 0 #Dunno why we have to do this
 			avgVal = float(sum(bestNewEndStatesVals))/len(bestNewEndStatesVals)
 			return avgVal
 			#possibleNewStatesAvgVals = [(float(sum(vals))/len(vals)) for vals in possibleNewEndStateVals]
@@ -144,12 +196,14 @@ class State:
 		newBoolGrid = self.generateEndTurnBoolGrid()
 		newCoords = copy.copy(tetro.spaces)
 		newDepth = self.depth+1
+		#print "newDepth: ",newDepth
 		newTurnState = State(newBoolGrid,newCoords,self.parent,depth=newDepth)
 		return newTurnState
 	def generateEndTurnBoolGrid(self):
 		newBoolGrid = copy.copy(self.boolGrid)
 		for coord in self.tetroBoxList:
 			newBoolGrid[tuple(coord)] = True
+		return newBoolGrid
 		
 class Agent(Input):
 	def __init__(self, parent):
