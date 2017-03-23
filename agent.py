@@ -90,8 +90,12 @@ class State:
 			oldActions = list(explored[front])
 			newActions = frontState.getLegalActions()
 			#print "2"
+			#print "Prev state: ",frontState.tetroBoxList
+			#print "possibleActions: ",newActions
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
+				#print "  newAction: ",newAction
+				#print "  newState: ",newState.tetroBoxList
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
 				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
@@ -117,28 +121,46 @@ class State:
 					runningScore+=(1/height)
 		return runningScore
 	def getLegalActions(self):
-		actions = [d for d in Directions.directions] + [d for d in Directions.rotations]
-		for direction in actions:
+		#print "startLegal"
+		originalActions = [d for d in Directions.legalMoves]
+		actions = [d for d in Directions.legalMoves]
+		#print "\n\n\n"
+		for direction in originalActions:
+			#print "\n"
+			#print "actionsBefore: ",actions
+			#print "checking action: ",direction
+			#print "boxList: ",self.tetroBoxList
+			#print "direction: ",direction
 			if direction in Directions.rotations:
-				rotatedBoxes = self.getRotatedCoords(self.tetroBoxList)
-				for box in rotatedBoxes:
+				#print "1"
+				rotatedBoxes = makuUtil.getRotatedCoords(self.boolGrid,self.tetroBoxList)
+				if not rotatedBoxes:
+					actions.remove(direction)
+					continue
+				#print "2"
+				for newBox in rotatedBoxes:
 					#boxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
 					#if boxIllegal or self.boolGrid[tuple(box)]:
-					if self.coordsAreIllegal(box):
+					if makuUtil.coordsAreIllegal(self.boolGrid,newBox):
 						if direction in actions:
 							actions.remove(direction)
+							continue
 			else:
+				#print "direction: ",direction
+				#print "actions: ",actions
 				for box in self.tetroBoxList:
 					newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
-					#newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
-					#if newBoxIllegal or self.boolGrid[newBox]:
-					if self.coordsAreIllegal(newBox):
+					#print " newBox: ",newBox
+					if makuUtil.coordsAreIllegal(self.boolGrid,newBox):
+						#print " Box was illegal: ",newBox
 						if direction in actions:
 							actions.remove(direction)
-		print "legalActions: ",actions
+							continue
+			#print "actionsAfter: ",actions
+		#print "endLegal"
 		return actions
 	def getRotatedCoords(self,boxList): #DON'T CHANGE THIS WITHOUT CHANGING DISPLAY
-		def moveCoordsForLegality(newBoxes):
+		"""def moveCoordsForLegality(newBoxes):
 			def getMovedCoords(movedToDirection):
 				newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
 				return newMovedToDirection
@@ -163,7 +185,8 @@ class State:
 			newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
 			newCoords.append(newCoord)
 		
-		return moveCoordsForLegality(newCoords)
+		return moveCoordsForLegality(newCoords)"""
+		return makuUtil.getRotatedCoords(self.boolGrid,self.tetroBoxList)
 			
 	def generateSuccessor(self,direction):
 		newBoolGrid = copy.copy(self.boolGrid)
@@ -186,14 +209,14 @@ class State:
 					s+='0'
 			s+="\n"
 		return s
-	def coordsAreIllegal(self,coords):
-		#print "checking coords: ",coords
-		#for coord in coords:
-		if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.boolGrid[tuple(coords)]:
-			#print "coords are illegal."
-			return True
-		#print "coords are legal."
-		return False
+	#def coordsAreIllegal(self,coords):
+	#	#print "checking coords: ",coords
+	#	#for coord in coords:
+	#	if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.boolGrid[tuple(coords)]:
+	#		#print "coords are illegal."
+	#		return True
+	#	#print "coords are legal."
+	#	return False
 		
 class Agent(Input):
 	def __init__(self, parent):

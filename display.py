@@ -18,7 +18,7 @@ class Display:
 		self.board = board
 		self.gameGrid = GameGrid(self)
 		#print "1"
-		self.input = KeyboardInput(self)#Agent(self)#KeyboardInput(self)
+		self.input = Agent(self)#KeyboardInput(self)
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		
@@ -80,34 +80,6 @@ class Display:
 		for newBox in newBoxes: newBox.activate()
 		self.fallingBlocks = newBoxes
 	def rotate(self):
-		"""def getRotatedCoords(): #DON'T CHANGE THIS WITHOUT CHANGING THE AGENT
-			def moveCoordsForLegality(newBoxes):
-				def getMovedCoords(movedToDirection):
-					newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
-					return newMovedToDirection
-				boolDict = self.gameGrid.asDict()
-				conflicts = False
-				movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
-				while True:
-					for d in movedToDirection:
-						conflicts = False
-						for newTetro in movedToDirection[d]:
-							if self.coordsAreIllegal(tuple(newTetro)):
-								conflicts = True
-						if not conflicts:
-							return movedToDirection[d]
-					movedToDirection = getMovedCoords(movedToDirection)
-			boxes = [[box[0],box[1]] for box in self.fallingBlocks]
-			
-			origin = boxes[0]
-			newCoords = []
-			for box in boxes:
-				horDiff = box[0]-origin[0]
-				vertDiff = origin[1]-box[1]
-				newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
-				newCoords.append(newCoord)
-			
-			return moveCoordsForLegality(newCoords)"""
 		boolGrid = self.gameGrid.asDictWithoutTetro()
 		newCoords = makuUtil.getRotatedCoords(boolGrid,self.fallingBlocks)
 		newBoxes = [self.gameGrid.boxes[newCoord[1]][newCoord[0]] for newCoord in newCoords]
@@ -159,14 +131,6 @@ class Display:
 	def getBoxToDirection(self,oldBox,d):
 		dimensions = [oldBox.dim["col"],oldBox.dim["row"]]
 		return self.gameGrid.getBox([dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]])
-	"""def coordsAreIllegal(self,coords):
-		#print "checking coords: ",coords
-		#for coord in coords:
-		if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.gameGrid.asDict()[tuple(coords)]:
-			#print "coords are illegal."
-			return True
-		#print "coords are legal."
-		return False"""
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
