@@ -26,7 +26,7 @@ class Display:
 		self.master.geometry("300x300")
 		Label(master, text = "Play Tetris!\n\n").pack()
 		
-		
+		#print "2"
 		self.points = 0
 		
 		self.scoreText = StringVar()
@@ -35,6 +35,7 @@ class Display:
 		self.scoreLabel.pack()
 		
 		self.master.after(1,self.beginGame)
+		#print "3"
 		mainloop()
 	def rowCleared(self):
 		print "You've cleared a row!"
@@ -42,9 +43,6 @@ class Display:
 		self.scoreText.set("Score: "+str(self.points))
 	def pressedKey(self,key):
 		self.pressedKeyChar(key.char)
-		#keyChar = key.char
-		#if keyChar in Directions.keyCharToDirection:
-		#	self.directionPressed(Directions.keyCharToDirection[keyChar])
 	def pressedKeyChar(self,keyChar):
 		if keyChar in Directions.direDict:
 			self.directionPressed(Directions.direDict[keyChar])
@@ -82,28 +80,14 @@ class Display:
 		for newBox in newBoxes: newBox.activate()
 		self.fallingBlocks = newBoxes
 	def rotate(self):
-		def getRotatedCoords():
+		"""def getRotatedCoords(): #DON'T CHANGE THIS WITHOUT CHANGING THE AGENT
 			def moveCoordsForLegality(newBoxes):
 				def getMovedCoords(movedToDirection):
 					newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
-					#for d in Directions.allDirections:
-					#	newMovedToDirection[d] = [[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]]
-					#newMovedBox = {"up": [[movedBox[0],movedBox[1]-1] for movedBox in movedBoxes["up"]],
-					#	"down":[[movedBox[0],movedBox[1]+1] for movedBox in movedBoxes["down"]],
-					#	"left":[[movedBox[0]-1,movedBox[1]] for movedBox in movedBoxes["left"]],
-					#	"right":[[movedBox[0]+1,movedBox[1]] for movedBox in movedBoxes["right"]]}
-					#return newMovedBox
 					return newMovedToDirection
 				boolDict = self.gameGrid.asDict()
 				conflicts = False
 				movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
-				#for d in Directions.allDirections:
-				#	movedToDirection[d] = [[newTetro[0],newTetro[1]] for newTetro in newBoxes]
-					#movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
-				#movedBox = {"up": [[newBox[0],newBox[1]] for newBox in newBoxes],
-				#	"down":[[newBox[0],newBox[1]] for newBox in newBoxes],
-				#	"left":[[newBox[0],newBox[1]] for newBox in newBoxes],
-				#	"right":[[newBox[0],newBox[1]] for newBox in newBoxes]}
 				while True:
 					for d in movedToDirection:
 						conflicts = False
@@ -113,30 +97,6 @@ class Display:
 						if not conflicts:
 							return movedToDirection[d]
 					movedToDirection = getMovedCoords(movedToDirection)
-					"""conflicts = False
-					print "mvoedBs", movedToDirection
-					for newBox in movedToDirection["up"]:
-						if self.coordsAreIllegal(tuple(newBox)):
-							conflicts = True
-					if not conflicts: return movedToDirection["up"]
-					conflicts = False
-					for newBox in movedToDirection["down"]:
-						if self.coordsAreIllegal(tuple(newBox)):
-							conflicts = True
-					if not conflicts: return movedToDirection["down"]
-					conflicts = False
-					for newbox in movedToDirection["left"]:
-						if self.coordsAreIllegal(tuple(newBox)):
-							conflicts = True
-						if not conflicts: return movedToDirection["left"]
-					conflicts = False
-					for newbox in movedToDirection["right"]:
-						if self.coordsAreIllegal(tuple(newBox)):
-							conflicts = True
-						if not conflicts: return movedToDirection["right"]
-					conflicts = False
-					movedToDirection = getMovedCoords(movedToDirection)"""
-					
 			boxes = [[box[0],box[1]] for box in self.fallingBlocks]
 			
 			origin = boxes[0]
@@ -147,24 +107,9 @@ class Display:
 				newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
 				newCoords.append(newCoord)
 			
-			return moveCoordsForLegality(newCoords)#moveCoordsForLegality(newCoords)
-				#newBox = self.gameGrid.getBox([box[1],box[0]])
-				#newBoxes.append(newBox)
-			"""#print "origin: ",origin.dim
-			newBoxes = []
-			for box in boxes:
-				print "box: ",box
-				coordDiff = [origin[0]-box[0],box[1]-origin[1]]
-				print "coordDiff: ",coordDiff
-				newBox = coordDiff
-				cosPart = math.cos(math.pi/2)
-				sinPart = math.sin(math.pi/2)
-				newBox = (int(round(float(newBox[0])*cosPart-float(newBox[1])*sinPart)),int(round(float(newBox[0])*sinPart+float(newBox[1])*cosPart)))
-				print "newBox: ",newBox
-				newBoxes.append(newBox)
-			return moveCoordsForLegality(newBoxes)
-			"""
-		newCoords = getRotatedCoords()
+			return moveCoordsForLegality(newCoords)"""
+		boolGrid = self.gameGrid.asDictWithoutTetro()
+		newCoords = makuUtil.getRotatedCoords(boolGrid,self.fallingBlocks)
 		newBoxes = [self.gameGrid.boxes[newCoord[1]][newCoord[0]] for newCoord in newCoords]
 		oldBoxes = self.fallingBlocks
 		self.fallingBlocks = newBoxes
@@ -240,6 +185,11 @@ class GameGrid:
 		for row in range(boardDepth):
 			for col in range(boardWidth):
 				boolGrid[row][col] = self.boxes[row][col].get()
+		return boolGrid
+	def asDictWithoutTetro(self):
+		boolGrid = self.asDict()
+		for tetro in self.father.fallingBlocks:
+			boolGrid[tuple(tetro)] = False
 		return boolGrid
 	def asDict(self):
 		#boolGrid = [[False for col in range(self.father.board.width)] for row in range(self.father.board.depth)]

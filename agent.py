@@ -83,10 +83,13 @@ class State:
 		boxesToState = {startBoxes:self}
 		terminalStates = []
 		while frontier:
+			#print "frontier: ",frontier
+			#print "1"
 			front = frontier.pop()
 			frontState = boxesToState[front]
 			oldActions = list(explored[front])
 			newActions = frontState.getLegalActions()
+			#print "2"
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
@@ -96,6 +99,7 @@ class State:
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
 						terminalStates.append(newState)
+			#print "3"
 		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
@@ -113,18 +117,61 @@ class State:
 					runningScore+=(1/height)
 		return runningScore
 	def getLegalActions(self):
-		actions = copy.copy(Directions.directions)
-		for direction in Directions.directions:
-			for box in self.tetroBoxList:
-				newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
-				newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
-				if newBoxIllegal or self.boolGrid[newBox]:
-					if direction in actions:
-						actions.remove(direction)
+		actions = [d for d in Directions.directions] + [d for d in Directions.rotations]
+		for direction in actions:
+			if direction in Directions.rotations:
+				rotatedBoxes = self.getRotatedCoords(self.tetroBoxList)
+				for box in rotatedBoxes:
+					#boxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
+					#if boxIllegal or self.boolGrid[tuple(box)]:
+					if self.coordsAreIllegal(box):
+						if direction in actions:
+							actions.remove(direction)
+			else:
+				for box in self.tetroBoxList:
+					newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
+					#newBoxIllegal = ((newBox[1]<0) | (newBox[0]<0) | (newBox[0]>=boardWidth) | (newBox[1]>=boardDepth))
+					#if newBoxIllegal or self.boolGrid[newBox]:
+					if self.coordsAreIllegal(newBox):
+						if direction in actions:
+							actions.remove(direction)
+		print "legalActions: ",actions
 		return actions
+	def getRotatedCoords(self,boxList): #DON'T CHANGE THIS WITHOUT CHANGING DISPLAY
+		def moveCoordsForLegality(newBoxes):
+			def getMovedCoords(movedToDirection):
+				newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
+				return newMovedToDirection
+			boolDict = self.boolGrid
+			conflicts = False
+			movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
+			while True:
+				for d in movedToDirection:
+					conflicts = False
+					for newTetro in movedToDirection[d]:
+						if self.parent.parent.coordsAreIllegal(tuple(newTetro)):
+							conflicts = True
+					if not conflicts:
+						return movedToDirection[d]
+				movedToDirection = getMovedCoords(movedToDirection)
+		boxes = [[box[0],box[1]] for box in self.tetroBoxList]
+		origin = boxes[0]
+		newCoords = []
+		for box in boxes:
+			horDiff = box[0]-origin[0]
+			vertDiff = origin[1]-box[1]
+			newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
+			newCoords.append(newCoord)
+		
+		return moveCoordsForLegality(newCoords)
+			
 	def generateSuccessor(self,direction):
 		newBoolGrid = copy.copy(self.boolGrid)
-		newBoxes = [[box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction]] for box in self.tetroBoxList]
+		newBoxes = []
+		if direction in Directions.directions:
+			newBoxes = [[box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction]] for box in self.tetroBoxList]
+		elif direction in Directions.rotations:
+			newBoxes = self.getRotatedCoords(self.tetroBoxList)
 		newState = State(newBoolGrid,newBoxes,self.parent)
 		return newState
 	def __str__(self):
@@ -139,6 +186,14 @@ class State:
 					s+='0'
 			s+="\n"
 		return s
+	def coordsAreIllegal(self,coords):
+		#print "checking coords: ",coords
+		#for coord in coords:
+		if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.boolGrid[tuple(coords)]:
+			#print "coords are illegal."
+			return True
+		#print "coords are legal."
+		return False
 		
 class Agent(Input):
 	def __init__(self, parent):
