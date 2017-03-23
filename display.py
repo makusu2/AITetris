@@ -143,6 +143,7 @@ class GameGrid:
 		return boolGrid
 	#	return boolGridDict
 	def __getitem__(self,index):
+		return self.boxes[index[1]][index[0]].get()
 		boolGridDict = {}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
