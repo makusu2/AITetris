@@ -37,7 +37,7 @@ class State:
 		self.parent = parent
 	def __getitem__(self,index):
 		return self.boolGrid[tuple(index)]
-	def getPossibleEndStates(self):
+	def getPossibleEndStates(self,depth=0):
 		def isTerminalState(state):
 			for box in state.tetroBoxList:
 				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
@@ -123,6 +123,33 @@ class State:
 					s+='0'
 			s+="\n"
 		return s
+	def expectimax(self):
+		if self.depth == maxDepth:
+			return self.evaluationFunction()
+		else:
+			possibleNewTurns = [self.generateNewTurn(tetro) for tetro in Tetro.types]
+			possibleNewEndStates = [turn.getPossibleEndStates(depth=self.depth+1) for turn in possibleNewTurns]
+			#should we use expectimax instead in the next line?
+			possibleNewEndStatesVals = [[state.expectimax() for state in states] for states in possibleNewEndStates]
+			bestNewEndStatesVals = [max(vals) for vals in possibleNewEndStatesVals]
+			avgVal = float(sum(bestNewEndStatesVals))/len(bestNewEndStatesVals)
+			return avgVal
+			#possibleNewStatesAvgVals = [(float(sum(vals))/len(vals)) for vals in possibleNewEndStateVals]
+			#bestEndStates = [
+			#possibleNewVals = [possibleNewTurn.expectimaxVal() for possibleNewTurn in possibleNewTurns]
+			#avgVal = float(sum(possibleNewVals))/len(possibleNewVals
+			#return avgVal
+			
+	def generateNewTurn(self,tetro):
+		newBoolGrid = self.generateEndTurnBoolGrid()
+		newCoords = copy.copy(tetro.spaces)
+		newDepth = self.depth+1
+		newTurnState = State(newBoolGrid,newCoords,self.parent,depth=newDepth)
+		return newTurnState
+	def generateEndTurnBoolGrid(self):
+		newBoolGrid = copy.copy(self.boolGrid)
+		for coord in self.tetroBoxList:
+			newBoolGrid[tuple(coord)] = True
 		
 class Agent(Input):
 	def __init__(self, parent):
@@ -143,7 +170,8 @@ class Agent(Input):
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = State(self.parent.gameGrid.asDict(),self.parent.fallingBlocks,self)
 		possibleEndStates = startState.getPossibleEndStates()
-		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates]
+		#Next could be eval func
+		possibleEndStateVals = [possibleEndState.expectimax() for possibleEndState in possibleEndStates]
 		bestVal = max(possibleEndStateVals)
 		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
 		endState = random.choice(bestEndStates)
