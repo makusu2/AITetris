@@ -16,19 +16,14 @@ class Display:
 	def __init__(self, master=Tk(),board=Board()):
 		self.master = master
 		self.board = board
-		print "1"
 		self.gameGrid = GameGrid(self)
-		#print "1"
-		print "2"
 		self.fallingTetro = None
 		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
 		self.input = Agent(self)#KeyboardInput(self)
-		print "3"
 		self.master.title("Tetris")
 		self.master.geometry("300x300")
 		Label(master, text = "Play Tetris!\n\n").pack()
 		
-		#print "2"
 		self.points = 0
 		
 		self.scoreText = StringVar()
@@ -37,7 +32,6 @@ class Display:
 		self.scoreLabel.pack()
 		
 		self.master.after(1,self.beginGame)
-		#print "3"
 		mainloop()
 	def rowCleared(self):
 		print "You've cleared a row!"
@@ -89,11 +83,6 @@ class Display:
 		self.fallingBlocks = newBoxes
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
-			#newBox[1]
-		#Since tetris games have different rules for rotation,
-		#we will have to press rotate, then get a screenshot for the new board.
-		#Also, we will only rotate in one direction.
-		#TODO get a screenshot of the board after having pressed "rotate"
 		
 	def directionBlocked(self,oldBoxes,newBoxes):
 		for newBox in newBoxes:
@@ -152,39 +141,19 @@ class GameGrid:
 			for col in range(boardWidth):
 				boolGrid[row][col] = self.boxes[row][col].get()
 		return boolGrid
-	#def asDictWithoutTetro(self):
-		#boolGrid = dict(self)
-		#boolGrid = self.asDict()
-		#return 
-		#for tetro in self.father.fallingBlocks:
-	#		boolGrid[tuple(tetro)] = False
-	#	return boolGrid
-	#def asDict(self):
-		#boolGrid = [[False for col in range(self.father.board.width)] for row in range(self.father.board.depth)]
-	#	boolGridDict = {}
-	#	for row in range(boardDepth):
-	#		for col in range(boardWidth):
-	#			boolGridDict[col,row] = self.boxes[row][col].get()
 	#	return boolGridDict
 	def __getitem__(self,index):
 		boolGridDict = {}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
 				boolGridDict[col,row] = self.boxes[row][col].get()
-		#return boolGridDict
-		#if len(index)==3: #THIS MEANS THAT YOU WANT IT WITH TETRO
-		#	for box in self.father.fallingBlocks:
-		#		if (index[0],index[1]) == tuple(box):
-		#			return True
 		return boolGridDict[index]
 	def asDict(self): #THIS WILL BE WITHOUT TETRO
 		boolGridDict = {}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
 				boolGridDict[col,row] = self.boxes[row][col].get()
-		#print "boolGridDict: ",boolGridDict
 		for box in self.father.fallingBlocks:
-			#print "   box: ",box
 			boxCoords = (box.dim["col"],box.dim["row"])
 			boolGridDict[boxCoords] = False
 		return boolGridDict

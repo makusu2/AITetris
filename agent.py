@@ -99,12 +99,8 @@ class State:
 							actions.remove(direction)
 							continue
 		return actions
-	#def getRotatedCoords(self,boxList): #DON'T CHANGE THIS WITHOUT CHANGING DISPLAY
-	#	return makuUtil.getRotatedCoords(self.boolGrid,self.tetroBoxList)
 			
 	def generateSuccessor(self,direction):
-		#print "GENERATING SUCCESSOR"
-		#print "old state: \n",self
 		newBoolGrid = copy.copy(self.boolGrid)
 		newBoxes = []
 		if direction in Directions.directions:
@@ -112,7 +108,6 @@ class State:
 		elif direction in Directions.rotations:
 			newBoxes = makuUtil.getRotatedCoords(self.boolGrid,self.tetroBoxList)
 		newState = State(newBoolGrid,newBoxes,self.parent)
-		#print "new state: \n",newState
 		return newState
 	def __str__(self):
 		s = ""
@@ -138,9 +133,9 @@ class Agent(Input):
 		actionsToTake = self.getActions()
 		time.sleep(0.1)
 		for action in actionsToTake:
-			time.sleep(0.02)
+			time.sleep(0.01)
 			self.parent.pressedKeyChar(action)
-			time.sleep(0.02)
+			time.sleep(0.01)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
@@ -157,27 +152,18 @@ class Agent(Input):
 		
 		
 def getPath(startState,endState):
-	#print "startState: \n",startState
-	#print "endState: \n",endState
 	startBoxes = tuple([tuple(box) for box in startState.tetroBoxList])
 	frontier = deque([startBoxes])
 	explored = {startBoxes:()} #dict to actions
 	boxesToState = {startBoxes:startState}
 	terminalStates = []
 	while frontier:
-		#print "frontier: ",frontier
-		#print "lenFrontier: ",len(frontier)
 		front = frontier.popleft()
-		#print "front: ",front
 		frontState = boxesToState[front]
-		#print "endState: ",endState
 		if front == tuple([tuple(box) for box in endState.tetroBoxList]):
-			#print "yeeeee"
-			#print "success path: ",tuple(explored[front])
 			return tuple(list(explored[front])+[Directions.D])
 		oldActions = list(explored[front])
 		newActions = frontState.getLegalActions()
-		#print "newActions: ",newActions
 		for newAction in newActions:
 			newState = frontState.generateSuccessor(newAction)
 			newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
@@ -185,23 +171,3 @@ def getPath(startState,endState):
 				explored[newBoxes] = tuple(oldActions+[newAction])
 				boxesToState[newBoxes] = newState
 				frontier.append(newBoxes)
-					
-					
-					
-					
-					
-					
-					
-					
-					
-					
-	"""startCol,startRow = startState.tetroBoxList[0]
-	endCol,endRow = endState.tetroBoxList[0]
-	actions = []
-	horDiff,vertDiff = (startCol-endCol,startRow-endRow)
-	horKey = Directions.L if (horDiff>0) else Directions.R
-	verKey = Directions.D
-	for i in range(abs(horDiff)): actions.append(horKey)
-	for i in range(abs(vertDiff)+1): actions.append(verKey)
-	return actions"""
-		
