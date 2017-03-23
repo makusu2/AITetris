@@ -159,14 +159,14 @@ class Display:
 	def getBoxToDirection(self,oldBox,d):
 		dimensions = [oldBox.dim["col"],oldBox.dim["row"]]
 		return self.gameGrid.getBox([dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]])
-	def coordsAreIllegal(self,coords):
+	"""def coordsAreIllegal(self,coords):
 		#print "checking coords: ",coords
 		#for coord in coords:
 		if coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or self.gameGrid.asDict()[tuple(coords)]:
 			#print "coords are illegal."
 			return True
 		#print "coords are legal."
-		return False
+		return False"""
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
