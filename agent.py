@@ -51,6 +51,7 @@ class State:
 		startState = State(self.boolGrid,startBoxes,self.parent)
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
+		sortedExplored = [sort(startBoxes)]
 		tempState = State(self.boolGrid,startBoxes,self.parent)
 		boxesToState = {startBoxes:startState}
 		terminalStates = []
@@ -62,8 +63,9 @@ class State:
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
-				if not newBoxes in explored:
+				if not newBoxes in sortedExplored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
+					sortedExplored.append(sort(newBoxes))
 					boxesToState[newBoxes] = newState
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
@@ -239,7 +241,7 @@ def getPath(startState,endState):
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
 		debDict = {startBoxes:(startBoxes)}
 		tempState = State(startState.boolGrid,startBoxes,startState.parent)
-		boxesToState = {startBoxes:startState}#startState}
+		boxesToState = {startBoxes:startState}
 		terminalStates = []
 		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
 		while frontier:
