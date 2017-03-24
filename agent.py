@@ -51,7 +51,8 @@ class State:
 		startState = State(self.boolGrid,startBoxes,self.parent)
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
-		sortedExplored = [sort(startBoxes)]
+		startSorted = makuUtil.sortCoords(startBoxes)
+		sortedExplored = [startSorted]
 		tempState = State(self.boolGrid,startBoxes,self.parent)
 		boxesToState = {startBoxes:startState}
 		terminalStates = []
@@ -63,13 +64,17 @@ class State:
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
-				if not newBoxes in sortedExplored:
+				sortedNewBoxes = makuUtil.sortCoords(newBoxes)
+				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
-					sortedExplored.append(sort(newBoxes))
+					if not sortedNewBoxes in sortedExplored:
+						sortedExplored = sortedExplored + [sortedNewBoxes]
 					boxesToState[newBoxes] = newState
 					frontier.append(newBoxes)
 					if isTerminalState(newState):
 						terminalStates.append(newState)
+		print "len explored: ",len(explored)
+		print "len sortedExplored: ",len(sortedExplored)
 		return terminalStates
 	def getComboGrid(self):
 		comboGrid = copy.copy(self.boolGrid)
