@@ -134,7 +134,7 @@ class State:
 		actions = [d for d in Directions.legalMoves]
 		for direction in originalActions:
 			if direction in Directions.rotations:
-				rotatedBoxes = makuUtil.getRotatedCoords(self.parent.parent.gameGrid.asDict(),self.tetroBoxList)
+				rotatedBoxes = makuUtil.getRotatedCoords(self,self.tetroBoxList)
 				if not rotatedBoxes:
 					actions.remove(direction)
 					continue
@@ -157,7 +157,7 @@ class State:
 		if direction in Directions.directions:
 			newBoxes = [[box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction]] for box in self.tetroBoxList]
 		elif direction in Directions.rotations:
-			newBoxes = makuUtil.getRotatedCoords(self.parent.parent.gameGrid.asDict(),self.tetroBoxList)
+			newBoxes = makuUtil.getRotatedCoords(self,self.tetroBoxList)
 		newState = State(newBoxes,self.parent,boolGridAdditions = self.boolGridAdditions)
 		return newState
 	def __str__(self):
@@ -297,7 +297,6 @@ def getPath(startState,endState):
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
 		debDict = {startBoxes:(startBoxes)}
-		#tempState = State(startBoxes,startState.parent,startState)
 		boxesToState = {startBoxes:startState}
 		terminalStates = []
 		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
