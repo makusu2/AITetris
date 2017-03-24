@@ -72,13 +72,15 @@ class Display:
 			else:
 				print "That direction is blocked."
 				return
+		#print "oldBoxes: ",oldBoxes
+		#print "newBoxes: ",newBoxes
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
 		self.fallingBlocks = newBoxes
 	def rotate(self):
-		boolGrid = self.gameGrid.asDict()
-		newCoords = makuUtil.getRotatedCoords(boolGrid,self.fallingBlocks)
-		newBoxes = [self.gameGrid.boxes[tuple(newCoord)] for newCoord in newCoords]
+		#boolGrid = self.gameGrid.asDict()
+		newCoords = makuUtil.getRotatedCoords(self.gameGrid,self.fallingBlocks)
+		newBoxes = [self.gameGrid[tuple(newCoord)] for newCoord in newCoords]
 		oldBoxes = self.fallingBlocks
 		self.fallingBlocks = newBoxes
 		for oldBox in oldBoxes: oldBox.activate()
@@ -91,7 +93,15 @@ class Display:
 					return True
 		return False
 	def endTurn(self): #This is called when a piece lands at the bottom
+		#print "1: ",self.fallingBlocks
 		#This is not yet optimized. It is only for testing.
+		def commitTetro(display):
+			#for fallingBlock in display.fallingBlocks:
+			#	self.gameGrid[fallingBlock].makeTrue)(
+			display.fallingBlocks = []
+			display.fallingTetro = None
+		commitTetro(self)
+		#print "2: ",self.fallingBlocks
 		for row in range(1,boardDepth):
 			if self.gameGrid.rowIsFull(row):
 				self.rowCleared()
@@ -102,7 +112,9 @@ class Display:
 						if not (bool(toBeReplaced) == bool(toReplace)):
 							toBeReplaced.activate()
 				self.gameGrid.emptyRow(0) #Clearing the top row
+		#print "3: ",self.fallingBlocks
 		self.addTetro(Tetro.randomTetro(self.board))
+		#print "4: ",self.fallingBlocks
 		thread.start_new_thread(self.input.newTurn, ())
 		#self.input.newTurn()
 	def addTetro(self, tetro):
@@ -128,12 +140,20 @@ class GameGrid:
 	def __init__(self,father,master=Tk()):
 		self.master = master
 		self.father = father
-		self.boxes = {(col,row):Box(self.master,row,col) for col in range(boardWidth) for row in range(boardDepth)}
+		self.boxes = {(col,row):Box(self.master,self.father,row,col) for col in range(boardWidth) for row in range(boardDepth)}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
 				self.boxes[col,row].grid()
 	def __getitem__(self,index):
+		index = tuple(index)
+		#fallingBlocks = [tuple(block) for block in self.father.fallingBlocks]
+		#if index in fallingBlocks: return False
 		return self.boxes[tuple(index)]
+	def __setitem__(self,index,value):
+		if value:
+			self.boxes[tuple(index)].makeTrue()
+		else:
+			self.boxes[tuple(index)].makeFalse()
 	def asDict(self): #THIS WILL BE WITHOUT TETRO
 		boolGridDict = {}
 		for row in range(boardDepth):
@@ -156,12 +176,13 @@ class GameGrid:
 			if bool(self.boxes[col,row]):#.get():
 				self.boxes[col,row].activate()
 class Box:
-	def __init__(self,master,row,col):
+	def __init__(self,master,display,row,col):
 		self.intVar = IntVar()
 		self.isChecked = False #This is stupid, but I've tried for HOURS getting the other way to work and it won't. LIterally hours. 2/25/17 from 8am to 3:13pm.
 		self.master = master
 		self.checkBox = Checkbutton(self.master,variable=self.intVar,command=self.hitBox)
 		self.checkBox.var = self.intVar
+		self.display = display
 		self.col = col
 		self.row = row
 	def grid(self):
@@ -174,4 +195,13 @@ class Box:
 	def __getitem__(self,b):
 		return tuple([self.col,self.row])[b]
 	def __nonzero__(self):
+		fallingBlocks = tuple([tuple(block) for block in self.display.fallingBlocks])
+		if (self.col,self.row) in fallingBlocks:
+			return False
 		return self.isChecked
+	def makeTrue():
+		if not bool(self):
+			self.activate()
+	def makeFalse():
+		if bool(self):
+			self.activate()
