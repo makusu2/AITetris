@@ -13,9 +13,6 @@ from conf import *
 import random
 from collections import deque
 
-tetroAvgVals = {tetro:(0.0,0) for tetro in Tetro.types}
-allAvgVal = (0.0,0)
-
 class Input:
 	def __init__(self, parent):
 		self.parent = parent
@@ -48,11 +45,6 @@ class State:
 				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
 					return True
 			return False
-			
-			
-			
-			
-		
 		topBoxes = tuple([tuple(box) for box in self.tetroBoxList])
 		initialDownPush = getInitialDownPush(topBoxes,self.boolGrid)
 		startBoxes = tuple([(box[0],box[1]+initialDownPush) for box in self.tetroBoxList])
@@ -146,8 +138,6 @@ class State:
 			possibleNewTurnVals = []
 			for i in range(len(possibleNewTurns)):#possibleNewTurns:
 				possibleNewEndStatesInNewTurn = possibleNewTurns[i].getPossibleEndStates()
-				#evalVals = [possibleNewEndStateInNewTurn.evaluationFunction() for possibleNewEndStateInNewTurn in possibleNewEndStatesInNewTurn]
-				#bestEvalVal = max(evalVals)
 				bestNewEndStatesInNewTurn = [possibleNewEndStateInNewTurn for possibleNewEndStateInNewTurn in possibleNewEndStatesInNewTurn if not possibleNewEndStateInNewTurn.didSomethingStupid()]#[possibleNewEndStatesInNewTurn[i] for i in range(len(possibleNewEndStatesInNewTurn)) if evalVals[i]==bestEvalVal]
 				expectivalSum = 0
 				expectivalCounter = 0
@@ -157,11 +147,6 @@ class State:
 					expectivalSum += expectival
 					expectivalCounter+=1
 				expectivalAvg = 0 if (expectivalCounter == 0) else float(expectivalSum)/expectivalCounter
-				global tetroAvgVals
-				global allAvgVal
-				b4 = tetroAvgVals[Tetro.types[i]]
-				tetroAvgVals[Tetro.types[i]] = (b4[0]+expectivalAvg,b4[1]+1)
-				allAvgVal = (allAvgVal[0]+expectivalAvg,allAvgVal[1]+1)
 				possibleNewTurnVals.append(expectivalAvg)
 			expectivalAvg = makuUtil.avg(possibleNewTurnVals)
 			return expectivalAvg
@@ -170,7 +155,6 @@ class State:
 		newBoolGrid = self.generateEndTurnBoolGrid()
 		newCoords = copy.copy(tetro.spaces)
 		newDepth = self.depth+1
-		#print "newDepth: ",newDepth
 		newTurnState = State(newBoolGrid,newCoords,self.parent,depth=newDepth)
 		return newTurnState
 	def generateEndTurnBoolGrid(self):
@@ -188,9 +172,7 @@ class State:
 					if comboGrid[col,row]:
 						highestGridRow = row
 			smallerGrid = {(col,row-highestGridRow):bool(comboGrid[col,row]) for col in range(boardWidth) for row in range(highestGridRow,boardDepth)}
-			#print smallerGrid
 			return smallerGrid
-		#def spotBlockedOff:
 		smallerGrid = getSmallerBoolGrid(self)
 		gridDepth = max([coord[1] for coord in smallerGrid])+1
 		gridWidth = boardWidth
@@ -209,32 +191,27 @@ class State:
 class Agent(Input):
 	def __init__(self, parent):
 		self.parent = parent
-		self.grid = self.parent.gameGrid.asDict()#parent.gameGrid.getBoolGrid()
+		self.grid = self.parent.gameGrid.asDict()
 		self.state = None
 	def newTurn(self):
-		#print "1"
-		self.grid = self.parent.gameGrid.asDict()#self.parent.gameGrid.getBoolGrid()
+		self.grid = self.parent.gameGrid.asDict()
 		self.state = State(self.parent.gameGrid.asDict(),self.parent.fallingBlocks,self)
 		actionsToTake = self.getActions()
 		time.sleep(0.1)
-		#print "2"
 		for action in actionsToTake:
-			time.sleep(0.015)
+			time.sleep(0.01)
 			self.parent.pressedKeyChar(action)
-			time.sleep(0.015)
-		#print "3"
+			time.sleep(0.01)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = State(self.parent.gameGrid.asDict(),self.parent.fallingBlocks,self)
 		possibleEndStates = startState.getPossibleEndStates()
-		#Next could be eval func
 		possibleEndStateVals = [possibleEndState.expectimax() for possibleEndState in possibleEndStates]
 		bestVal = max(possibleEndStateVals)
 		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
 		endState = random.choice(bestEndStates)
 		path = getPath(startState,endState)
-		#print path
 		return path
 			
 		
@@ -265,7 +242,6 @@ def getPath(startState,endState):
 		boxesToState = {startBoxes:startState}#startState}
 		terminalStates = []
 		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
-		#print "testEndBoxes: ",testEndBoxes
 		while frontier:
 			front = frontier.popleft()
 			frontState = boxesToState[front]
@@ -279,15 +255,10 @@ def getPath(startState,endState):
 					debDict[newBoxes] = tuple(list(debDict[front])+[newBoxes])
 					boxesToState[newBoxes] = newState
 					if newBoxes == testEndBoxes:
-						pathActions = tuple(list(explored[front])+[newAction])#Doing this in the parent method+[Directions.D])
-						#print "lenActions: ",len(pathActions)
-						#print "debDict at endState: ",debDict[front]
+						pathActions = tuple(list(explored[front])+[newAction])
 						return pathActions
 					frontier.append(newBoxes)
 	pathFound = pathFinder(startState,endState)
-	#global tetroAvgVals
-	#print "the thing: ",tetroAvgVals
-	#printTetroAvgs()
 	endState.didSomethingStupid()
 	return checkPath(startState,endState,pathFound)
 def getInitialDownPush(startBoxes,boolGrid):
@@ -299,25 +270,3 @@ def getInitialDownPush(startBoxes,boolGrid):
 				highestGridRow = row
 	calculatedDownPush = highestGridRow-deepestBoxRow-1
 	return max(0,calculatedDownPush)
-def printTetroAvgs():
-	global tetroAvgVals
-	global allAvgVal
-	avgVal = allAvgVal[0]/allAvgVal[1]
-	print "numSamples: ",allAvgVal[1]
-	print "total avg: ",avgVal
-	tetros = tetroAvgVals.keys()
-	tetroVal = [tetroAvgVals[tetro][0]/tetroAvgVals[tetro][1] for tetro in tetros]
-	closeness = [val/avgVal for val in tetroVal]
-	offness = [abs(1-closenessVal) for closenessVal in closeness]
-	bestOffness = min(offness)
-	bestTetro = tetros[offness.index(bestOffness)]
-	for i in range(len(tetros)):
-		print " tetro: ",tetros[i]
-		print "offness: ",offness[i]
-	print "best tetro: ",bestTetro
-	#for tetro in tetroAvgVals:
-	#	print " Tetro: ",tetro
-	#	bothVals = tetroAvgVals[tetro]
-	#	val = bothVals[0]/bothVals[1]
-	#	print " Val: ",val
-	#	print "closeness: ",(val/avgVal)
