@@ -31,8 +31,6 @@ class KeyboardInput(Input):
 
 class State:
 	def __init__(self,boolGrid,tetroBoxList,parent,depth=0):
-		#boolGrid is without the starting tetro
-		#print "creating state with depth of ",depth
 		self.boolGrid = boolGrid #This is a dict
 		self.tetroBoxList = tetroBoxList
 		self.parent = parent
@@ -176,14 +174,17 @@ class Agent(Input):
 		self.grid = self.parent.gameGrid.asDict()#parent.gameGrid.getBoolGrid()
 		self.state = None
 	def newTurn(self):
+		print "1"
 		self.grid = self.parent.gameGrid.asDict()#self.parent.gameGrid.getBoolGrid()
 		self.state = State(self.parent.gameGrid.asDict(),self.parent.fallingBlocks,self)
 		actionsToTake = self.getActions()
 		time.sleep(0.1)
+		print "2"
 		for action in actionsToTake:
-			time.sleep(0.01)
+			time.sleep(0.015)
 			self.parent.pressedKeyChar(action)
-			time.sleep(0.01)
+			time.sleep(0.015)
+		print "3"
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
@@ -202,35 +203,50 @@ class Agent(Input):
 		
 		
 def getPath(startState,endState):
-	topBoxes = tuple([tuple(box) for box in startState.tetroBoxList])
-	initialDownPush = getInitialDownPush(topBoxes,startState.boolGrid)
-	startBoxes = tuple([(box[0],box[1]+initialDownPush) for box in startState.tetroBoxList])
-	startState = State(startState.boolGrid,startBoxes,startState.parent)
-	frontier = deque([startBoxes])
-	explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
-	debDict = {startBoxes:(startBoxes)}
-	tempState = State(startState.boolGrid,startBoxes,startState.parent)
-	boxesToState = {startBoxes:startState}#startState}
-	terminalStates = []
-	testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
-	while frontier:
-		front = frontier.popleft()
-		frontState = boxesToState[front]
-		oldActions = list(explored[front])
-		newActions = frontState.getLegalActions()
-		for newAction in newActions:
-			newState = frontState.generateSuccessor(newAction)
-			newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
-			if not newBoxes in explored:
-				explored[newBoxes] = tuple(oldActions+[newAction])
-				debDict[newBoxes] = tuple(list(debDict[front])+[newBoxes])
-				boxesToState[newBoxes] = newState
-				if newBoxes == testEndBoxes:
-					pathActions = tuple(list(explored[front])+[Directions.D])
-					print "lenActions: ",len(pathActions)
-					print "debDict at endState: ",debDict[front]
-					return pathActions
-				frontier.append(newBoxes)
+	def checkPath(startState,endState,actions):
+		tempState = startState
+		for action in actions:
+			tempState = tempState.generateSuccessor(action)
+		tempStateBoxCheck = tuple([tuple(box) for box in tempState.tetroBoxList])
+		endStateBoxCheck = tuple([tuple(box) for box in endState.tetroBoxList])
+		if tempStateBoxCheck == endStateBoxCheck:
+			return tuple(list(actions)+[Directions.D])
+		else:
+			print "temp: ",tempStateBoxCheck
+			print "end: ",endStateBoxCheck
+	def pathFinder(startState,endState):
+		topBoxes = tuple([tuple(box) for box in startState.tetroBoxList])
+		initialDownPush = getInitialDownPush(topBoxes,startState.boolGrid)
+		startBoxes = tuple([(box[0],box[1]+initialDownPush) for box in startState.tetroBoxList])
+		startState = State(startState.boolGrid,startBoxes,startState.parent)
+		frontier = deque([startBoxes])
+		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
+		debDict = {startBoxes:(startBoxes)}
+		tempState = State(startState.boolGrid,startBoxes,startState.parent)
+		boxesToState = {startBoxes:startState}#startState}
+		terminalStates = []
+		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
+		print "testEndBoxes: ",testEndBoxes
+		while frontier:
+			front = frontier.popleft()
+			frontState = boxesToState[front]
+			oldActions = list(explored[front])
+			newActions = frontState.getLegalActions()
+			for newAction in newActions:
+				newState = frontState.generateSuccessor(newAction)
+				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
+				if not newBoxes in explored:
+					explored[newBoxes] = tuple(oldActions+[newAction])
+					debDict[newBoxes] = tuple(list(debDict[front])+[newBoxes])
+					boxesToState[newBoxes] = newState
+					if newBoxes == testEndBoxes:
+						pathActions = tuple(list(explored[front])+[newAction])#Doing this in the parent method+[Directions.D])
+						print "lenActions: ",len(pathActions)
+						print "debDict at endState: ",debDict[front]
+						return pathActions
+					frontier.append(newBoxes)
+	pathFound = pathFinder(startState,endState)
+	return checkPath(startState,endState,pathFound)
 def getInitialDownPush(startBoxes,boolGrid):
 	deepestBoxRow = max([box[1] for box in startBoxes])
 	highestGridRow = 19
