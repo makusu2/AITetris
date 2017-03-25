@@ -55,7 +55,7 @@ class State:
 		return self.parent.parent.gameGrid[tuple(index)]
 		#return self.boolGrid[tuple(index)]
 	def __setitem__(self,index,value):
-		if not value==True:
+		if not (value==True):
 			print "TRYING TO SET AS NOT TRUE"
 		if not index in self.boolGridAdditions:
 			self.boolGridAdditions.append(tuple(index))
@@ -202,7 +202,7 @@ class State:
 			return expectivalAvg
 			
 	def generateNewTurn(self,tetro):
-		print "ay: ",self.tetroBoxList
+		#print "ay: ",self.tetroBoxList
 		boolGridAdditions = self.boolGridAdditions + [tuple(coord) for coord in self.tetroBoxList]
 		newCoords = copy.copy(tetro.spaces)
 		newDepth = self.depth+1
@@ -288,15 +288,17 @@ def getPath(startState,endState):
 			print "temp: ",tempStateBoxCheck
 			print "end: ",endStateBoxCheck
 	def pathFinder(startState,endState):
-		print "startState: \n",startState
-		print "endState: \n",endState
+		#print "startState: \n",startState
+		#print "endState: \n",endState
 		topBoxes = tuple([tuple(box) for box in startState.tetroBoxList])
 		initialDownPush = getInitialDownPush(topBoxes,startState)
 		startBoxes = tuple([(box[0],box[1]+initialDownPush) for box in startState.tetroBoxList])
 		startState = State(startBoxes,startState.parent,startState.boolGridAdditions)
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
-		debDict = {startBoxes:(startBoxes)}
+		debCoordDict = {startBoxes:[(tuple(startBoxes))]}
+		debActionDict = {startBoxes:()}
+		#print "ds: ",debDict[startBoxes]
 		boxesToState = {startBoxes:startState}
 		terminalStates = []
 		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
@@ -310,16 +312,29 @@ def getPath(startState,endState):
 				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
 				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
-					debDict[newBoxes] = tuple(list(debDict[front])+[newBoxes])
+					#oldDebDict = debCoordDict[front]
+					#print "Dfls",oldDebDict
+					debCoordDict[newBoxes] = tuple(list(debCoordDict[front])+[newBoxes])
+					debActionDict[newBoxes] = tuple(list(debActionDict[front])+[newAction])
 					boxesToState[newBoxes] = newState
 					if newBoxes == testEndBoxes:
 						pathActions = tuple(list(explored[front])+[newAction])
+						debCoords = debCoordDict[newBoxes]
+						debActions = debActionDict[newBoxes]
+						#print "ds2: ",debDict[startBoxes]
+						#print "\n\n\ndeb time"
+						#for i in range(len(debActions)):
+						#	print "debAction:\n   ",debActions[i]
+						#	print "debCoord:\n   ", debCoords[i+1]
+						#for debCoord in debStates: print debState
+						#print "\n\n\n"
+						#print "debDict[newBoxes]: ",debDict[newBoxes]
 						return pathActions
 					frontier.append(newBoxes)
 	pathFound = pathFinder(startState,endState)
 	endState.didSomethingStupid()
 	approvedPath = checkPath(startState,endState,pathFound)
-	print "path: ",approvedPath
+	#print "path: ",approvedPath
 	return approvedPath
 def getInitialDownPush(startBoxes,state):
 	deepestBoxRow = max([box[1] for box in startBoxes])

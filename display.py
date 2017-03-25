@@ -9,6 +9,7 @@ from makuUtil import Directions
 import conf
 from conf import *
 import math
+import time
 #Note: A "Box" is just a space. A "block" is a box that holds a piece. A "Tetro" is one of the four-blocked pieces in a Tetris game.
 #I need to work on the dimensions. I think I"m confusing rows and columns. It can either be [column,row] or [row][column]
 #Rows should count down.
@@ -33,6 +34,8 @@ class Display:
 		
 		self.master.after(1,self.beginGame)
 		mainloop()
+	def __getitem__(self,index):
+		return self.gameGrid[index]
 	def rowCleared(self):
 		print "You've cleared a row!"
 		self.points+=1
@@ -44,6 +47,7 @@ class Display:
 			self.directionPressed(Directions.direDict[keyChar])
 	def beginGame(self):self.endTurn()
 	def directionPressed(self,d):
+		#print "ACTUAL MOVEMENT: Action:\n   ",d
 		if d not in Directions.directions:
 			if d in Directions.rotations:
 				self.rotate()
@@ -72,17 +76,16 @@ class Display:
 			else:
 				print "That direction is blocked."
 				return
-		#print "oldBoxes: ",oldBoxes
-		#print "newBoxes: ",newBoxes
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
-		self.fallingBlocks = newBoxes
+		self.fallingBlocks = self.sortBoxes(newBoxes)
+		newCoords = [tuple(coord) for coord in self.fallingBlocks]
+		#print "new coords:\n   ",newCoords
 	def rotate(self):
-		#boolGrid = self.gameGrid.asDict()
 		newCoords = makuUtil.getRotatedCoords(self.gameGrid,self.fallingBlocks)
 		newBoxes = [self.gameGrid[tuple(newCoord)] for newCoord in newCoords]
 		oldBoxes = self.fallingBlocks
-		self.fallingBlocks = newBoxes
+		self.fallingBlocks = self.sortBoxes(newBoxes)
 		for oldBox in oldBoxes: oldBox.activate()
 		for newBox in newBoxes: newBox.activate()
 		
@@ -93,15 +96,11 @@ class Display:
 					return True
 		return False
 	def endTurn(self): #This is called when a piece lands at the bottom
-		#print "1: ",self.fallingBlocks
 		#This is not yet optimized. It is only for testing.
 		def commitTetro(display):
-			#for fallingBlock in display.fallingBlocks:
-			#	self.gameGrid[fallingBlock].makeTrue)(
 			display.fallingBlocks = []
 			display.fallingTetro = None
 		commitTetro(self)
-		#print "2: ",self.fallingBlocks
 		for row in range(1,boardDepth):
 			if self.gameGrid.rowIsFull(row):
 				self.rowCleared()
@@ -112,20 +111,21 @@ class Display:
 						if not (bool(toBeReplaced) == bool(toReplace)):
 							toBeReplaced.activate()
 				self.gameGrid.emptyRow(0) #Clearing the top row
-		#print "3: ",self.fallingBlocks
 		self.addTetro(Tetro.randomTetro(self.board))
-		#print "4: ",self.fallingBlocks
 		thread.start_new_thread(self.input.newTurn, ())
-		#self.input.newTurn()
 	def addTetro(self, tetro):
 		self.fallingTetro = tetro
 		self.fallingBlocks = []
+		blockList = []
 		for startingPos in tetro.spaces:
 			currentBox = self.gameGrid[startingPos]
 			if bool(currentBox):
 				self.endGame()
 			currentBox.activate()
-			self.fallingBlocks.append(currentBox)
+			blockList.append(currentBox)
+			#self.fallingBlocks.append(currentBox)
+		#print "SHOULD NOT BE EMPTY: ",blockList
+		self.fallingBlocks = self.sortBoxes(blockList)
 		self.fallingTetro = tetro
 	def getBoxDown(self, oldBox):
 		return self.getBoxToDirection(oldBox,Direction.D)
@@ -135,6 +135,11 @@ class Display:
 	def endGame(self):
 		print "YOU LOSE!"
 		sleep(10)
+	def sortBoxes(self,boxes):
+		coords = [tuple(box) for box in boxes]
+		sortedCoords = makuUtil.sortCoords(coords)
+		newBoxes = [self[coord] for coord in sortedCoords]
+		return newBoxes
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
@@ -145,9 +150,6 @@ class GameGrid:
 			for col in range(boardWidth):
 				self.boxes[col,row].grid()
 	def __getitem__(self,index):
-		index = tuple(index)
-		#fallingBlocks = [tuple(block) for block in self.father.fallingBlocks]
-		#if index in fallingBlocks: return False
 		return self.boxes[tuple(index)]
 	def __setitem__(self,index,value):
 		if value:
