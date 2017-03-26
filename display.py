@@ -134,7 +134,7 @@ class Display:
 		return self.gameGrid[dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]]
 	def endGame(self):
 		print "YOU LOSE!"
-		sleep(10)
+		time.sleep(10)
 	def sortBoxes(self,boxes):
 		coords = [tuple(box) for box in boxes]
 		sortedCoords = makuUtil.sortCoords(coords)
