@@ -59,41 +59,91 @@ class State:
 				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
 					return True
 			return False
+		def isTerminalBoxes(state,boxes): #Might be wrong
+			for box in boxes:
+				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
+					return True
+			return False
+		def getLegalActionsBoxes(state,boxes):
+			originalActions = [d for d in Directions.legalMoves]
+			actions = [d for d in Directions.legalMoves]
+			for direction in originalActions:
+				if direction in Directions.rotations:
+					rotatedBoxes = makuUtil.getRotatedCoords(state,boxes)
+					if not rotatedBoxes:
+						actions.remove(direction)
+						continue
+					for newBox in rotatedBoxes:
+						if makuUtil.coordsAreIllegal(state,newBox):
+							if direction in actions:
+								actions.remove(direction)
+								continue
+				else:
+					for box in boxes:
+						newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
+						if makuUtil.coordsAreIllegal(state,newBox):
+							if direction in actions:
+								actions.remove(direction)
+								continue
+			return actions
+			
 		topBoxes = tuple([tuple(box) for box in self.tetroBoxList])
 		initialDownPush = getInitialDownPush(topBoxes,self)
 		startBoxes = makuUtil.sortCoords(tuple([(box[0],box[1]+initialDownPush) for box in self.tetroBoxList]))
-		startState = State(startBoxes,self.parent)
-		frontier = deque([startBoxes])
+		startState = State(startBoxes,self.parent)#!!!
+		frontier = deque([tuple(startBoxes)])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
+		#print "explored: ",explored
 		startSorted = makuUtil.sortCoords(startBoxes)
-		tempState = State(startBoxes,self.parent)
-		boxesToState = {startBoxes:startState}
+		boxesToState = {startBoxes:startState}#!!!
 		terminalStates = []
 		bestTerminalVal = 0
 		while frontier:
 			front = frontier.popleft()
-			frontState = boxesToState[front]
+			#frontState = boxesToState[front]#!!!
 			oldActions = list(explored[front])
-			newActions = frontState.getLegalActions()
+			#newActions = frontState.getLegalActions()
+			newActions = getLegalActionsBoxes(startState,front)
+			#print "newActions: ",newActions
 			for newAction in newActions:
-				newState = frontState.generateSuccessor(newAction)
-				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
-				sortedNewBoxes = makuUtil.sortCoords(newBoxes)
-				if not newBoxes in explored:
+				#newState = frontState.generateSuccessor(newAction)
+				#newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
+				#frontCoords = [tuple(box) for box in front]
+				newBoxes = None
+				if newAction in Directions.rotations:
+					newBoxes = makuUtil.sortCoords(makuUtil.getRotatedCoords(startState,front))
+				else:
+					newBoxes = makuUtil.sortCoords([tuple(makuUtil.getCoordToDirection(coord,newAction)) for coord in front])#([tuple(makuUtil.getCoordToDirection(coord,newAction)) for coord in frontCoords])
+				#sortedNewBoxes = makuUtil.sortCoords(newBoxes)
+				#print "newBoxes: ",newBoxes
+				#print "explored: ",explored
+				if not newBoxes in explored.keys():
+					#print "they aren't"
+					#print "\nnewBoxes: ",newBoxes
+					#print "\nexplored: ",explored
+					#print "\noldActions: ",oldActions
+					#print "\nnewAction: ",newAction
+					#print "\ntuple: ",tuple(oldActions+[newAction])
+					#print "\n\n\n"
 					explored[newBoxes] = tuple(oldActions+[newAction])
-					boxesToState[newBoxes] = newState
+					#boxesToState[newBoxes] = newState#!!!
 					frontier.append(newBoxes)
-					if isTerminalState(newState):
+					#if isTerminalState(newState):
+					if isTerminalBoxes(startState,newBoxes):
 						if onlyBest:
-							if not newState.didSomethingStupid():
+							#if not newState.didSomethingStupid():
+							if not startState.didSomethingStupidBoxes(newBoxes):
 								#print "yeah"
-								newVal = newState.evaluationFunction()
+								#newVal = newState.evaluationFunction()
+								newVal = 0#CHANGE THIS LATER
 								if newVal>bestTerminalVal:
 									bestTerminalVal = newVal
 									terminalStates = []
 								if newVal>=bestTerminalVal:
+									newState = State(newBoxes,startState.parent, boolGridAdditions=startState.boolGridAdditions)#Could the creation of the state here be why the old eval val isn't working?
 									terminalStates.append(newState)
 						else:
+							newState = State(newBoxes,startState.parent, boolGridAdditions=startState.boolGridAdditions)#Could the creation of the state here be why the old eval val isn't working?
 							terminalStates.append(newState)
 		if ((not terminalStates) and onlyBest):
 			print "was zero, so redoing"
@@ -109,13 +159,22 @@ class State:
 			return state[col,row]
 		boxes = self.tetroBoxList
 		runningScore = 0.0
-		for row in range(boardDepth-1,0,-1):
+		for row in range(boardDepth-1,boardDepth-8,-1):#second argument could be 0, but I'm trying this for speed
 			for col in range(boardWidth):
 				if getComboSpot(col,row,self):
 					height = float(boardDepth - row)
 					runningScore+=(1/(height*2))
 		runningScore+=self.parent.parent.points * boardWidth * 2
-		totalScore = self.runningVal + (runningScore/(self.depth+1))
+		if self.didSomethingStupid(): runningScore/=2
+		for coord in self.tetroBoxList:
+			if not makuUtil.coordsAreIllegal(self,(coord[0],coord[1]+1),checkStateTetro=True):
+				runningScore/=2
+		
+		
+		totalScore = self.runningVal + (runningScore/(2*(self.depth+1)))
+		#print "runningScore: ",runningScore
+		#print "totalScore: ",totalScore
+		#if (random.choice([True,False,False,False])): totalScore = totalScore/2
 		return totalScore
 	def getLegalActions(self):
 		originalActions = [d for d in Directions.legalMoves]
@@ -217,6 +276,34 @@ class State:
 				if blocked:
 					return True
 		return False
+	def didSomethingStupidBoxes(self,boxes):
+		#print "1"
+		#This is for checking for stuff like blocking spaces
+		#TRY TO ONLY CHECK FOR SPACES NEXT TO THE TETRO
+		def getImportantCoords(state,boxes):
+			minCol = boxes[0][0]#This should work thanks to the sorting
+			maxCol = boxes[3][0]#Same reason as above
+			rows = [coord[1] for coord in tuple(boxes)]
+			minRow = min(rows)
+			maxRow = max(rows)
+			leftCol = max(0,minCol-1)
+			rightCol = min(boardWidth,maxCol+2)
+			topRow = max(0,minRow-1)
+			botRow = min(boardDepth,maxRow+2)
+			return (leftCol,rightCol,topRow,botRow)
+		leftCol,rightCol,topRow,botRow = getImportantCoords(self,boxes)
+		for col in range(leftCol,rightCol):
+			for row in range(topRow,botRow):
+				currentCoord = (col,row)
+				blocked = True
+				for direction in [Directions.U, Directions.L, Directions.R]:
+					coordToDirection = makuUtil.getCoordToDirection(currentCoord,direction)
+					if not makuUtil.coordsAreIllegal(self,coordToDirection,checkStateTetro=False,extraCoords=boxes):
+						blocked = False
+				if blocked:
+					return True
+		return False
+		
 		
 class Agent(Input):
 	def __init__(self, parent):
@@ -238,7 +325,7 @@ class Agent(Input):
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = State(self.parent.fallingBlocks,self)
 		possibleEndStates = startState.getPossibleEndStates()
-		possibleEndStateVals = [possibleEndState.expectimax() for possibleEndState in possibleEndStates]
+		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates] #CAN BE EXPECTIMAX OR EVAL FUNC
 		bestVal = max(possibleEndStateVals)
 		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
 		endState = random.choice(bestEndStates)
