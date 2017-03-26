@@ -132,17 +132,8 @@ class State:
 			return state[col,row]
 		boxes = self.tetroBoxList
 		runningScore = 0.0
-		#for row in range(boardDepth-1,boardDepth-8,-1):#second argument could be 0, but I'm trying this for speed
-		#	for col in range(boardWidth):
-		#		if getComboSpot(col,row,self):
-		#			height = float(boardDepth - row)
-		#			runningScore+=(1/(height*2))
-		#print "1: ",runningScore
 		runningScore+=coordEvaluationFunction(self.tetroBoxList)
-		#print "2: ",runningScore
 		runningScore+=self.parent.parent.points * boardWidth * 2
-		#Checking to see the number of open spots next to each piece of the tetro
-		#print "3: ",runningScore
 		for box in self.tetroBoxList:
 			boxDown = makuUtil.getCoordToDirection(box,Directions.D)
 			while not makuUtil.coordsAreIllegal(self,boxDown,checkStateTetro=True):
@@ -155,9 +146,7 @@ class State:
 				sideBox = makuUtil.getCoordToDirection(box,direction)
 				if not makuUtil.coordsAreIllegal(self,(sideBox[0],sideBox[1]),checkStateTetro=True):
 					runningScore-=0.25
-		#print "4: ",runningScore
-		#if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore/=2
-		#print "5: ",runningScore
+		if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore/=4
 		if self.depth==0:
 			return runningScore
 		totalScore = self.runningVal+(runningScore/(self.depth+1))
@@ -244,7 +233,7 @@ class State:
 		#print "1"
 		#This is for checking for stuff like blocking spaces
 		#TRY TO ONLY CHECK FOR SPACES NEXT TO THE TETRO
-		return False #CHANGE THIS LATER!!!
+		#return False #CHANGE THIS LATER!!!
 		def getImportantCoords(state,boxes):
 			minCol = boxes[0][0]#This should work thanks to the sorting
 			maxCol = boxes[3][0]#Same reason as above
@@ -253,19 +242,24 @@ class State:
 			maxRow = max(rows)
 			leftCol = max(0,minCol-1)
 			rightCol = min(boardWidth,maxCol+2)
-			topRow = max(0,minRow-1)
-			botRow = min(boardDepth,maxRow+2)
+			topRow = max(0,minRow-1)#was 1
+			botRow = min(boardDepth,maxRow+2) #was 2
 			return (leftCol,rightCol,topRow,botRow)
 		leftCol,rightCol,topRow,botRow = getImportantCoords(self,boxes)
 		for col in range(leftCol,rightCol):
 			for row in range(topRow,botRow):
 				currentCoord = (col,row)
+				if currentCoord in boxes: continue
 				blocked = True
 				for direction in [Directions.U, Directions.L, Directions.R]:
 					coordToDirection = makuUtil.getCoordToDirection(currentCoord,direction)
+					#print "boxes1: ",boxes
 					if not makuUtil.coordsAreIllegal(self,coordToDirection,checkStateTetro=False,extraCoords=boxes):
+						#print "extraCoords: ",boxes
 						blocked = False
+					#print "boxes2: ",boxes
 				if blocked:
+					#print "1112"
 					return True
 		return False
 	def createNextDepth(self, coords):
