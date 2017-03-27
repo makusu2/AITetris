@@ -6,7 +6,8 @@ class Board:
 		#self.depth = depth
 		#self.width = width
 		self.tetroStartPoint=(boardWidth/2,0)
-class Tetro:#"Tetronimo" is the name of the combination of four blocks
+class Tetro:#"Tetronimo" is the name of the combination of four blocks]
+	#types = ["T"]
 	types = ["J","L","O","T","S","Z","I"]
 	def __init__(self, type, board):
 		self.type = type #Type can be J,L,O,T,S,Z,I

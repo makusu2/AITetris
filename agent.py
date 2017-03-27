@@ -7,7 +7,7 @@ from board import *
 import time
 import copy
 import makuUtil
-from makuUtil import Directions
+from makuUtil import *
 import conf
 from conf import *
 import random
@@ -34,7 +34,7 @@ class KeyboardInput(Input):
 class State:
 	def __init__(self,tetroBoxList,parent,depth=0,runningVal=0,boolGridAdditions=[]):
 		self.boolGridAdditions = boolGridAdditions
-		self.tetroBoxList = makuUtil.sortCoords(tetroBoxList)
+		self.tetroBoxList = QuadCoords(tetroBoxList)
 		self.parent = parent
 		self.depth = depth
 		self.runningVal = runningVal
@@ -44,7 +44,6 @@ class State:
 		if index in self.boolGridAdditions: 
 			return True
 		return self.parent.parent.gameGrid[tuple(index)]
-		#return self.boolGrid[tuple(index)]
 	def __setitem__(self,index,value):
 		if not (value==True):
 			print "TRYING TO SET AS NOT TRUE"
@@ -80,6 +79,7 @@ class State:
 			return actions
 		initialDownPush = getInitialDownPush(self.tetroBoxList,self)
 		startBoxes = makuUtil.sortCoords(tuple([(box[0],box[1]+initialDownPush) for box in self.tetroBoxList]))
+		#startBoxes = self.tetroBoxList.pushedDownCoords(initialDownPush)
 		startState = State(startBoxes,self.parent,depth=self.depth,runningVal=self.runningVal)
 		frontier = deque([tuple(startBoxes)])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
@@ -125,6 +125,8 @@ class State:
 		elif not terminalStates: print "WHAT"
 		return terminalStates
 		
+		
+		
 	def evaluationFunction(self):
 		def getComboSpot(col,row,state):
 			if (col,row) in state.tetroBoxList:
@@ -134,23 +136,32 @@ class State:
 		runningScore = 0.0
 		runningScore+=coordEvaluationFunction(self.tetroBoxList)
 		runningScore+=self.parent.parent.points * boardWidth * 2
+		
+		testScore = runningScore
 		for box in self.tetroBoxList:
 			boxDown = makuUtil.getCoordToDirection(box,Directions.D)
 			while not makuUtil.coordsAreIllegal(self,boxDown,checkStateTetro=True):
-				runningScore-=0.3
+				runningScore-=1
 				boxDown = makuUtil.getCoordToDirection(boxDown,Directions.D)
 			boxUp = makuUtil.getCoordToDirection(box,Directions.U)
 			if makuUtil.coordsAreIllegal(self,boxUp,checkStateTetro=False):
 				runningScore+=3
 			for direction in [Directions.L,Directions.R]:
 				sideBox = makuUtil.getCoordToDirection(box,direction)
-				if not makuUtil.coordsAreIllegal(self,(sideBox[0],sideBox[1]),checkStateTetro=True):
-					runningScore-=0.25
-		if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore/=4
+				if makuUtil.coordsAreIllegal(self,(sideBox[0],sideBox[1]),checkStateTetro=False):
+					runningScore+=0.8
+		boxRows = [coord[1] for coord in self.tetroBoxList]
+		if min(boxRows)<(boardDepth/2): runningScore-=10
+		elif min(boxRows)<5: runningScore-=50
+		elif min(boxRows)<2: runningScore-=500
+		if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore=runningScore-abs(runningScore/2)
 		if self.depth==0:
 			return runningScore
 		totalScore = self.runningVal+(runningScore/(self.depth+1))
 		return totalScore
+		
+		
+		
 	def getLegalActions(self):
 		originalActions = [d for d in Directions.legalMoves]
 		actions = [d for d in Directions.legalMoves]
@@ -199,6 +210,7 @@ class State:
 		s+="Running score: "+str(self.runningVal)+"\n"
 		s+="Evaluation function: "+str(self.evaluationFunction())+"\n"
 		s+="Coord eval func: "+str(coordEvaluationFunction(self.tetroBoxList))+"\n"
+		s+="Did something stupid: "+str(self.didSomethingStupidBoxes(self.tetroBoxList))+"\n"
 		return s
 	def expectimax(self):
 		if self.depth >= maxDepth:
@@ -213,15 +225,12 @@ class State:
 				expectivalSum = 0
 				expectivalCounter = 0
 				for possibleNewEndStateInNewTurn in possibleNewEndStatesInNewTurn:
-					#possibleNewEndStateInNewTurn.depth = self.depth+1
-					#possibleNewEndStateInNewTurn.runningVal = self.runningVal
 					expectival = possibleNewEndStateInNewTurn.expectimax()
 					expectivalSum += expectival
 					expectivalCounter+=1
 				expectivalAvg = 0 if (expectivalCounter == 0) else float(expectivalSum)/expectivalCounter
 				possibleNewTurnVals.append(expectivalAvg)
 			expectivalAvg = makuUtil.avg(possibleNewTurnVals)
-			#print "avg: ",expectivalAvg
 			return expectivalAvg
 			
 	def generateNewTurn(self,tetro):
@@ -249,17 +258,14 @@ class State:
 		for col in range(leftCol,rightCol):
 			for row in range(topRow,botRow):
 				currentCoord = (col,row)
-				if currentCoord in boxes: continue
+				if makuUtil.coordsAreIllegal(self,currentCoord,checkStateTetro=False,extraCoords=boxes): continue
+			#	if (currentCoord in boxes) or (self[currentCoord]): continue
 				blocked = True
 				for direction in [Directions.U, Directions.L, Directions.R]:
 					coordToDirection = makuUtil.getCoordToDirection(currentCoord,direction)
-					#print "boxes1: ",boxes
 					if not makuUtil.coordsAreIllegal(self,coordToDirection,checkStateTetro=False,extraCoords=boxes):
-						#print "extraCoords: ",boxes
 						blocked = False
-					#print "boxes2: ",boxes
 				if blocked:
-					#print "1112"
 					return True
 		return False
 	def createNextDepth(self, coords):
@@ -268,11 +274,11 @@ class State:
 class Agent(Input):
 	def __init__(self, parent):
 		self.parent = parent
-		self.grid = self.parent.gameGrid.asDict()
+		self.grid = self.parent.gameGrid.asDict() #Shouldn't I just ignore this and make stuff call the gameGrid?
 		self.state = None
 	def newTurn(self):
 		self.grid = self.parent.gameGrid.asDict()
-		startCoords = tuple([tuple(block) for block in self.parent.fallingBlocks])
+		startCoords = QuadCoords(tuple([tuple(block) for block in self.parent.fallingBlocks]))
 		self.state = State(startCoords,self)
 		actionsToTake = self.getActions()
 		time.sleep(0.1)
@@ -287,8 +293,9 @@ class Agent(Input):
 		possibleEndStates = startState.getPossibleEndStates()
 		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates] #CAN BE EXPECTIMAX OR EVAL FUNC
 		#for i in range(len(possibleEndStates)):
-		#	print "state: ",possibleEndStates[i]
-		#	time.sleep(1)
+		#	if possibleEndStates[i].didSomethingStupidBoxes(possibleEndStates[i].tetroBoxList):
+		#		print "state: ",possibleEndStates[i]
+		#		time.sleep(1)
 		bestVal = max(possibleEndStateVals)
 		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
 		endState = random.choice(bestEndStates)
