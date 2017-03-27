@@ -5,7 +5,7 @@ import agent
 from agent import *
 import thread
 import makuUtil
-from makuUtil import Directions
+from makuUtil import *
 import conf
 from conf import *
 import math
@@ -18,8 +18,7 @@ class Display:
 		self.master = master
 		self.board = board
 		self.gameGrid = GameGrid(self)
-		self.fallingTetro = None
-		self.fallingBlocks = [] #This will hold the four blocks of the current tetro
+		self.fallingBlocks = QuadCoords([])#[] #This will hold the four blocks of the current tetro
 		self.input = Agent(self)#KeyboardInput(self)
 		self.master.title("Tetris")
 		self.master.geometry("300x300")
@@ -45,9 +44,8 @@ class Display:
 	def pressedKeyChar(self,keyChar):
 		if keyChar in Directions.direDict:
 			self.directionPressed(Directions.direDict[keyChar])
-	def beginGame(self):self.endTurn()
+	def beginGame(self):self.endTurn(firstTurn=True)
 	def directionPressed(self,d):
-		#print "ACTUAL MOVEMENT: Action:\n   ",d
 		if d not in Directions.directions:
 			if d in Directions.rotations:
 				self.rotate()
@@ -56,66 +54,46 @@ class Display:
 				print "You pressed a direction, but it's invalid."
 				return
 		oldBoxes = self.fallingBlocks
-		downMost = max([oldBox.row for oldBox in oldBoxes])
-		leftMost = min([oldBox.col for oldBox in oldBoxes])
-		rightMost = max([oldBox.col for oldBox in oldBoxes])
-		if (downMost == boardDepth-1) & (d == Directions.D):
-			self.endTurn()
-			return
-		elif (leftMost==0) & (d==Directions.L):
-			print "User tried to go left at the furthest left possible"
-			return
-		elif (rightMost==boardWidth-1) & (d==Directions.R):
-			print "User tried to go right at furthest right possible"
-			return
-		newBoxes = [self.getBoxToDirection(oldBox,d) for oldBox in oldBoxes]
-		if self.directionBlocked(oldBoxes,newBoxes):
-			if (d==Directions.D):
-				self.endTurn()
-				return
-			else:
-				print "That direction is blocked."
-				return
-		for oldBox in oldBoxes: oldBox.activate()
-		for newBox in newBoxes: newBox.activate()
-		self.fallingBlocks = self.sortBoxes(newBoxes)
-		newCoords = [tuple(coord) for coord in self.fallingBlocks]
-		#print "new coords:\n   ",newCoords
+		for oldBox in oldBoxes:
+			newBox = makuUtil.getCoordToDirection(oldBox,d)
+			if makuUtil.coordsAreIllegal(self,newBox):
+				if d==Directions.D:
+					self.endTurn()
+					return
+				else:
+					print "ILLEGAL MOVE 323222"
+					return
+		newBoxes = [makuUtil.getCoordToDirection(oldBox,d) for oldBox in oldBoxes]
+		self.changeActivatedCoords(oldBoxes,newBoxes)
+		self.fallingBlocks = QuadCoords(newBoxes)
 	def rotate(self):
 		newCoords = makuUtil.getRotatedCoords(self.gameGrid,self.fallingBlocks)
 		newBoxes = [self.gameGrid[tuple(newCoord)] for newCoord in newCoords]
 		oldBoxes = self.fallingBlocks
-		self.fallingBlocks = self.sortBoxes(newBoxes)
-		for oldBox in oldBoxes: oldBox.activate()
-		for newBox in newBoxes: newBox.activate()
-		
-	def directionBlocked(self,oldBoxes,newBoxes):
-		for newBox in newBoxes:
-			if newBox not in oldBoxes:
-				if bool(newBox):#.get():
-					return True
-		return False
-	def endTurn(self): #This is called when a piece lands at the bottom
+		self.fallingBlocks = QuadCoords(newBoxes)
+		self.changeActivatedCoords(oldBoxes,newBoxes)
+	def changeActivatedCoords(self,oldBoxes,newBoxes):
+		for oldBox in oldBoxes: self[oldBox].activate()
+		for newBox in newBoxes: self[newBox].activate()
+	def endTurn(self,firstTurn=False): #This is called when a piece lands at the bottom
 		#This is not yet optimized. It is only for testing.
 		def commitTetro(display):
-			display.fallingBlocks = []
-			display.fallingTetro = None
-		commitTetro(self)
-		for row in range(1,boardDepth):
-			if self.gameGrid.rowIsFull(row):
-				self.rowCleared()
-				for row2 in range(row,0,-1):
-					for col in range(boardWidth):
-						toBeReplaced = self.gameGrid.boxes[col,row2]
-						toReplace = self.gameGrid.boxes[col,row2-1]
-						if not (bool(toBeReplaced) == bool(toReplace)):
-							toBeReplaced.activate()
-				self.gameGrid.emptyRow(0) #Clearing the top row
+			display.fallingBlocks = QuadCoords([])
+		if not firstTurn:
+			commitTetro(self)
+			for row in range(1,boardDepth):
+				if self.gameGrid.rowIsFull(row):
+					self.rowCleared()
+					for row2 in range(row,0,-1):
+						for col in range(boardWidth):
+							toBeReplaced = self.gameGrid.boxes[col,row2]
+							toReplace = self.gameGrid.boxes[col,row2-1]
+							if not (bool(toBeReplaced) == bool(toReplace)):
+								toBeReplaced.activate()
+					self.gameGrid.emptyRow(0) #Clearing the top row
 		self.addTetro(Tetro.randomTetro(self.board))
 		thread.start_new_thread(self.input.newTurn, ())
 	def addTetro(self, tetro):
-		self.fallingTetro = tetro
-		self.fallingBlocks = []
 		blockList = []
 		for startingPos in tetro.spaces:
 			currentBox = self.gameGrid[startingPos]
@@ -123,47 +101,26 @@ class Display:
 				self.endGame()
 			currentBox.activate()
 			blockList.append(currentBox)
-			#self.fallingBlocks.append(currentBox)
-		#print "SHOULD NOT BE EMPTY: ",blockList
-		self.fallingBlocks = self.sortBoxes(blockList)
-		self.fallingTetro = tetro
-	def getBoxDown(self, oldBox):
-		return self.getBoxToDirection(oldBox,Direction.D)
-	def getBoxToDirection(self,oldBox,d):
-		dimensions = [oldBox.col,oldBox.row]
-		return self.gameGrid[dimensions[0]+Directions.colMod[d],dimensions[1]+Directions.rowMod[d]]
+		self.fallingBlocks = QuadCoords(blockList)
 	def endGame(self):
 		print "YOU LOSE!"
 		time.sleep(10)
-	def sortBoxes(self,boxes):
-		coords = [tuple(box) for box in boxes]
-		sortedCoords = makuUtil.sortCoords(coords)
-		newBoxes = [self[coord] for coord in sortedCoords]
-		return newBoxes
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
 		self.master = master
 		self.father = father
-		self.boxes = {(col,row):Box(self.master,self.father,row,col) for col in range(boardWidth) for row in range(boardDepth)}
+		self.boxes = {(col,row):Box(self.master,self.father,(col,row)) for col in range(boardWidth) for row in range(boardDepth)}
 		for row in range(boardDepth):
 			for col in range(boardWidth):
 				self.boxes[col,row].grid()
-	def __getitem__(self,index):
+	def __getitem__(self,index): #This might cause problems with the tetro on top
 		return self.boxes[tuple(index)]
 	def __setitem__(self,index,value):
 		if value:
 			self.boxes[tuple(index)].makeTrue()
 		else:
 			self.boxes[tuple(index)].makeFalse()
-	def asDict(self): #THIS WILL BE WITHOUT TETRO
-		boolGridDict = {}
-		for row in range(boardDepth):
-			for col in range(boardWidth):
-				boolGridDict[col,row] = self[col,row]
-		for box in self.father.fallingBlocks:
-			boolGridDict[(box.col,box.row)] = False
-		return boolGridDict
 	def __str__(self):
 		s=""
 		for row in range(boardDepth):
@@ -172,33 +129,36 @@ class GameGrid:
 			s+="\n"
 		return s
 	def rowIsFull(self,row):
+		thing3 = []
+		for col in range(boardWidth):
+			thing1 = self[col,row]
+			thing2 = bool(thing1)
+			thing3 = thing3 + [thing2]
 		return not (False in [bool(self[col,row]) for col in range(boardWidth)])
 	def emptyRow(self, row):
 		for col in range(boardWidth):
-			if bool(self.boxes[col,row]):#.get():
+			if bool(self.boxes[col,row]):
 				self.boxes[col,row].activate()
 class Box:
-	def __init__(self,master,display,row,col):
+	def __init__(self,master,display,coords):
 		self.intVar = IntVar()
 		self.isChecked = False #This is stupid, but I've tried for HOURS getting the other way to work and it won't. LIterally hours. 2/25/17 from 8am to 3:13pm.
 		self.master = master
 		self.checkBox = Checkbutton(self.master,variable=self.intVar,command=self.hitBox)
 		self.checkBox.var = self.intVar
 		self.display = display
-		self.col = col
-		self.row = row
+		self.coords = coords
 	def grid(self):
-		self.checkBox.grid(row=self.row,column=self.col)
+		self.checkBox.grid(row=self[1],column=self[0])
 	def hitBox(self):
 		self.isChecked = not self.isChecked
 	def __str__(self):
 		return "#" if bool(self) else "0"
 	def activate(self): self.checkBox.invoke()
 	def __getitem__(self,b):
-		return tuple([self.col,self.row])[b]
+		return self.coords[b]
 	def __nonzero__(self):
-		fallingBlocks = tuple([tuple(block) for block in self.display.fallingBlocks])
-		if (self.col,self.row) in fallingBlocks:
+		if (self[0],self[1]) in self.display.fallingBlocks:
 			return False
 		return self.isChecked
 	def makeTrue():
