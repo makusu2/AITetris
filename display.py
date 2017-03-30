@@ -105,7 +105,7 @@ class Display:
 		self.fallingBlocks = QuadCoords(blockList)
 	def endGame(self):
 		print "YOU LOSE!"
-		time.sleep(10)
+		time.sleep(100)
 			
 class GameGrid:
 	def __init__(self,father,master=Tk()):
