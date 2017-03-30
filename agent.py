@@ -41,9 +41,7 @@ class State:
 	def __getitem__(self,index): #Doesn't include tetro
 		if index in self.tetroBoxList:
 			return False
-		if index in self.boolGridAdditions: 
-			return True
-		return self.parent.parent.gameGrid[tuple(index)]
+		return (index in self.boolGridAdditions) or self.parent.parent.gameGrid[tuple(index)]
 	def __setitem__(self,index,value):
 		if not (value==True):
 			print "TRYING TO SET AS NOT TRUE"
@@ -60,7 +58,7 @@ class State:
 			actions = [d for d in Directions.legalMoves]
 			for direction in originalActions:
 				if direction in Directions.rotations:
-					rotatedBoxes = makuUtil.getRotatedCoords(state,boxes)
+					rotatedBoxes = boxes.rotatedCoords(state)
 					if not rotatedBoxes:
 						actions.remove(direction)
 						continue
@@ -92,7 +90,7 @@ class State:
 			for newAction in newActions:
 				newBoxes = None
 				if newAction in Directions.rotations:
-					newBoxes = QuadCoords(makuUtil.getRotatedCoords(startState,front))
+					newBoxes =front.rotatedCoords(startState)
 				else:
 					newBoxes = front.pushedToDirectionCoords(newAction)
 				if not newBoxes in explored:
@@ -148,15 +146,13 @@ class State:
 				sideBox = makuUtil.getCoordToDirection(box,direction)
 				if makuUtil.coordsAreIllegal(self,(sideBox[0],sideBox[1]),checkStateTetro=False):
 					runningScore+=0.8
-		boxRows = [coord[1] for coord in self.tetroBoxList]
-		if min(boxRows)<(boardDepth/2): runningScore-=10
-		elif min(boxRows)<5: runningScore-=50
-		elif min(boxRows)<2: runningScore-=500
+		topRow = self.tetroBoxList.topRow
+		if topRow<(boardDepth/2): runningScore-=10
+		elif topRow<5: runningScore-=50
+		elif topRow<2: runningScore-=500
 		if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore=runningScore-abs(runningScore/2)
-		if self.depth==0:
-			return runningScore
-		totalScore = self.runningVal+(runningScore/(self.depth+1))
-		return totalScore
+		if self.depth==0: return runningScore
+		return self.runningVal+(runningScore/(self.depth+1))
 		
 		
 		
@@ -165,7 +161,7 @@ class State:
 		actions = [d for d in Directions.legalMoves]
 		for direction in originalActions:
 			if direction in Directions.rotations:
-				rotatedBoxes = makuUtil.getRotatedCoords(self,self.tetroBoxList)
+				rotatedBoxes = self.tetroBoxList.rotatedCoords(self)
 				if not rotatedBoxes:
 					actions.remove(direction)
 					continue
@@ -188,7 +184,7 @@ class State:
 		if direction in Directions.directions:
 			newBoxes = [[box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction]] for box in self.tetroBoxList]
 		elif direction in Directions.rotations:
-			newBoxes = makuUtil.getRotatedCoords(self,self.tetroBoxList)
+			newBoxes = self.tetroBoxList.rotatedCoords(self)
 		newState = State(newBoxes,self.parent,depth=self.depth,boolGridAdditions = self.boolGridAdditions)
 		return newState
 	def __str__(self):
@@ -295,9 +291,9 @@ def getPath(startState,endState):
 			print "temp: ",tempStateBoxCheck
 			print "end: ",endStateBoxCheck
 	def pathFinder(startState,endState):
-		topBoxes = tuple([tuple(box) for box in startState.tetroBoxList])
+		topBoxes = startState.tetroBoxList
 		initialDownPush = getInitialDownPush(topBoxes,startState)
-		startBoxes = tuple([(box[0],box[1]+initialDownPush) for box in startState.tetroBoxList])
+		startBoxes = startState.tetroBoxList.pushedDownCoords(initialDownPush)
 		startState = State(startBoxes,startState.parent,boolGridAdditions=startState.boolGridAdditions)
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
@@ -311,7 +307,7 @@ def getPath(startState,endState):
 			newActions = frontState.getLegalActions()
 			for newAction in newActions:
 				newState = frontState.generateSuccessor(newAction)
-				newBoxes = tuple([tuple(box) for box in newState.tetroBoxList])
+				newBoxes = newState.tetroBoxList
 				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
 					boxesToState[newBoxes] = newState
@@ -323,11 +319,10 @@ def getPath(startState,endState):
 	approvedPath = checkPath(startState,endState,pathFound)
 	return approvedPath
 def getInitialDownPush(startBoxes,state):
-	deepestBoxRow = max([box[1] for box in startBoxes])
 	highestGridRow = 19
 	for row in range(boardDepth-1,0,-1):
 		for col in range(boardWidth):
 			if state[col,row]:
 				highestGridRow = row
-	calculatedDownPush = highestGridRow-deepestBoxRow-1
+	calculatedDownPush = highestGridRow-startBoxes.botRow-1
 	return max(0,calculatedDownPush)

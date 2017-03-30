@@ -1,6 +1,8 @@
 import random
 import conf
 from conf import *
+import makuUtil
+from makuUtil import *
 class Board:
 	def __init__(self,depth=boardDepth,width=boardWidth):
 		#self.depth = depth
@@ -25,17 +27,17 @@ class Tetro:#"Tetronimo" is the name of the combination of four blocks]
 	def getStartBoxPointList(self): #start is the placement of the highest block (or leftmost highest)
 		start = self.board.tetroStartPoint
 		if self.type == "J":
-			return [[start[0],start[1]],[start[0],start[1]+1],[start[0]+1,start[1]+1],[start[0]+2,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0],start[1]+1],[start[0]+1,start[1]+1],[start[0]+2,start[1]+1]])
 		if self.type == "L":
-			return [[start[0],start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1],[start[0]-2,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1],[start[0]-2,start[1]+1]])
 		if self.type == "O":
-			return [[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]+1,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]+1,start[1]+1]])
 		if self.type == "T":
-			return [[start[0],start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1],[start[0]+1,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1],[start[0]+1,start[1]+1]])
 		if self.type == "S":
-			return [[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1]])
 		if self.type == "Z":
-			return [[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1]]
+			return QuadCoords([[start[0],start[1]],[start[0]+1,start[1]],[start[0],start[1]+1],[start[0]-1,start[1]+1]])
 		if self.type == "I":
-			return [[start[0],start[1]],[start[0]+1,start[1]],[start[0]+2,start[1]],[start[0]+3,start[1]]]
+			return QuadCoords([[start[0],start[1]],[start[0]+1,start[1]],[start[0]+2,start[1]],[start[0]+3,start[1]]])
 		print "LETTER MATCHES NO KNOWN SHAPE!"

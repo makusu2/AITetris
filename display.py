@@ -67,8 +67,9 @@ class Display:
 		self.changeActivatedCoords(oldBoxes,newBoxes)
 		self.fallingBlocks = QuadCoords(newBoxes)
 	def rotate(self):
-		newCoords = makuUtil.getRotatedCoords(self.gameGrid,self.fallingBlocks)
-		newBoxes = [self.gameGrid[tuple(newCoord)] for newCoord in newCoords]
+		newCoords = self.fallingBlocks.rotatedCoords(self)
+		#newBoxes = [self.gameGrid[newCoord] for newCoord in newCoords]
+		newBoxes = newCoords
 		oldBoxes = self.fallingBlocks
 		self.fallingBlocks = QuadCoords(newBoxes)
 		self.changeActivatedCoords(oldBoxes,newBoxes)
@@ -115,7 +116,7 @@ class GameGrid:
 			for col in range(boardWidth):
 				self.boxes[col,row].grid()
 	def __getitem__(self,index): #This might cause problems with the tetro on top
-		return self.boxes[tuple(index)]
+		return self.boxes[index]
 	def __setitem__(self,index,value):
 		if value:
 			self.boxes[tuple(index)].makeTrue()
