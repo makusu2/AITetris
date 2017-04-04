@@ -34,7 +34,8 @@ class KeyboardInput(Input):
 class State:
 	def __init__(self,tetroBoxList,parent,depth=0,runningVal=0,boolGridAdditions=[]):
 		self.boolGridAdditions = boolGridAdditions
-		self.tetroBoxList = QuadCoords(tetroBoxList)
+		#self.tetroBoxList = QuadCoords(tetroBoxList)
+		self.tetroBoxList = tetroBoxList
 		self.parent = parent
 		self.depth = depth
 		self.runningVal = runningVal
@@ -47,12 +48,16 @@ class State:
 			print "TRYING TO SET AS NOT TRUE"
 		if not index in self.boolGridAdditions:
 			self.boolGridAdditions.append(tuple(index))
+			
 	def getPossibleEndStates(self,onlyBest=False):
 		def isTerminalBoxes(state,boxes):
+			#print "boxes: ",boxes
 			for box in boxes:
 				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
 					return True
 			return False
+		def newStateCoords(coords,state):
+			return State(coords,self.parent,boolGridAdditions=state.boolGridAdditions,runningVal=state.runningVal,depth=state.depth)
 		def getLegalActionsBoxes(state,boxes):
 			originalActions = [d for d in Directions.legalMoves]
 			actions = [d for d in Directions.legalMoves]
@@ -62,18 +67,14 @@ class State:
 					if not rotatedBoxes:
 						actions.remove(direction)
 						continue
-					for newBox in rotatedBoxes:
-						if makuUtil.coordsAreIllegal(state,newBox):
-							if direction in actions:
-								actions.remove(direction)
-								continue
+					if rotatedBoxes.hasIllegalCoords(state) and (direction in actions):
+						actions.remove(direction)
+						continue
 				else:
-					for box in boxes:
-						newBox = (box[0]+Directions.colMod[direction],box[1]+Directions.rowMod[direction])
-						if makuUtil.coordsAreIllegal(state,newBox):
-							if direction in actions:
-								actions.remove(direction)
-								continue
+					newBoxes = boxes.pushedToDirectionCoords(direction)
+					if newBoxes.hasIllegalCoords(state) and (direction in actions):
+						actions.remove(direction)
+						continue
 			return actions
 		initialDownPush = getInitialDownPush(self.tetroBoxList,self)
 		startBoxes = self.tetroBoxList.pushedDownCoords(initialDownPush)
@@ -98,17 +99,17 @@ class State:
 					frontier.append(newBoxes)
 					if isTerminalBoxes(startState,newBoxes):
 						if not onlyBest:
-							newState = startState.createNextDepth(newBoxes)
+							newState = newStateCoords(newBoxes,startState)
 							terminalStates.append(newState)
 						elif not startState.didSomethingStupidBoxes(newBoxes):
 							newShortVal = newBoxes.evaluationFunction()
 							if newShortVal>bestShortTerminalVal:
-								newState = startState.createNextDepth(newBoxes)
+								newState = newStateCoords(newBoxes,startState)
 								terminalStates=[newState]
 								bestTerminalVal = newState.evaluationFunction()
 								bestShortTerminalVal=newShortVal
 							elif newShortVal==bestShortTerminalVal:
-								newState = startState.createNextDepth(newBoxes)
+								newState = newStateCoords(newBoxes,startState)
 								newVal = newState.evaluationFunction()
 								if newVal>bestTerminalVal:
 									terminalStates = [newState]
@@ -124,6 +125,7 @@ class State:
 		
 		
 	def evaluationFunction(self):
+		#print "depth: ",self.depth
 		def getComboSpot(col,row,state):
 			if (col,row) in state.tetroBoxList:
 				return True
@@ -152,7 +154,7 @@ class State:
 		elif topRow<2: runningScore-=500
 		if self.didSomethingStupidBoxes(self.tetroBoxList): runningScore=runningScore-abs(runningScore/2)
 		if self.depth==0: return runningScore
-		return self.runningVal+(runningScore/(self.depth+1))
+		return self.runningVal+(runningScore/(2*((self.depth+1))))
 		
 		
 		
@@ -216,21 +218,15 @@ class State:
 			possibleNewTurnVals = []
 			for i in range(len(possibleNewTurns)):#possibleNewTurns:
 				possibleNewEndStatesInNewTurn = possibleNewTurns[i].getPossibleEndStates(onlyBest=False)
-				expectivalSum = 0
-				expectivalCounter = 0
-				for possibleNewEndStateInNewTurn in possibleNewEndStatesInNewTurn:
-					expectival = possibleNewEndStateInNewTurn.expectimax()
-					expectivalSum += expectival
-					expectivalCounter+=1
-				expectivalAvg = 0 if (expectivalCounter == 0) else float(expectivalSum)/expectivalCounter
-				possibleNewTurnVals.append(expectivalAvg)
+				bestVal = max([state.expectimax() for state in possibleNewEndStatesInNewTurn])
+				possibleNewTurnVals.append(bestVal)
 			expectivalAvg = makuUtil.avg(possibleNewTurnVals)
-			return expectivalAvg
+			return self.evaluationFunction()+expectivalAvg
 			
 	def generateNewTurn(self,tetro):
 		boolGridAdditions = self.boolGridAdditions + [tuple(coord) for coord in self.tetroBoxList]
 		newCoords = copy.copy(tetro.spaces)
-		newTurnState = State(newCoords,self.parent,boolGridAdditions = boolGridAdditions,runningVal=self.runningVal,depth=self.depth)
+		newTurnState = State(newCoords,self.parent,boolGridAdditions = boolGridAdditions,runningVal=self.runningVal,depth=self.depth+1)
 		return newTurnState
 	def didSomethingStupidBoxes(self,boxes):
 		for col in range(boxes.leftCol-1,boxes.rightCol+2):
@@ -255,17 +251,19 @@ class Agent(Input):
 	def newTurn(self):
 		startCoords = QuadCoords(tuple([tuple(block) for block in self.parent.fallingBlocks]))
 		actionsToTake = self.getActions()
-		time.sleep(0.1)
+		time.sleep(0.01)
 		for action in actionsToTake:
-			time.sleep(0.01)
+			time.sleep(0.1)
 			self.parent.pressedKeyChar(action)
-			time.sleep(0.01)
+			time.sleep(0.1)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
 		startState = State(self.parent.fallingBlocks,self)
+		#print "StartState depth: ",startState.depth
 		possibleEndStates = startState.getPossibleEndStates()
-		possibleEndStateVals = [possibleEndState.evaluationFunction() for possibleEndState in possibleEndStates] #CAN BE EXPECTIMAX OR EVAL FUNC
+		#print "firstEndDepth: ",possibleEndStates[0].depth
+		possibleEndStateVals = [possibleEndState.expectimax() for possibleEndState in possibleEndStates] #CAN BE EXPECTIMAX OR EVAL FUNC
 		bestVal = max(possibleEndStateVals)
 		bestEndStates = [possibleEndStates[i] for i in range(len(possibleEndStates)) if (possibleEndStateVals[i]==bestVal)]
 		endState = random.choice(bestEndStates)
@@ -277,47 +275,74 @@ class Agent(Input):
 		
 		
 def getPath(startState,endState):
-	def checkPath(startState,endState,actions):
+	#def checkPath(startState,endState,actions):
 		#print "startState: ",startState
 		#print "endState: ",endState
-		tempState = startState
-		for action in actions:
-			tempState = tempState.generateSuccessor(action)
-		tempStateBoxCheck = tuple([tuple(box) for box in tempState.tetroBoxList])
-		endStateBoxCheck = tuple([tuple(box) for box in endState.tetroBoxList])
-		if tempStateBoxCheck == endStateBoxCheck:
-			return tuple(list(actions)+[Directions.D])
-		else:
-			print "temp: ",tempStateBoxCheck
-			print "end: ",endStateBoxCheck
+		#tempState = startState
+		#for action in actions:
+		#	tempState = tempState.generateSuccessor(action)
+		#tempStateBoxCheck = tuple([tuple(box) for box in tempState.tetroBoxList])
+		#endStateBoxCheck = tuple([tuple(box) for box in endState.tetroBoxList])
+		#if tempStateBoxCheck == endStateBoxCheck:
+		#	return tuple(list(actions)+[Directions.D])
+		#else:
+		#	print "temp: ",tempStateBoxCheck
+		#	print "end: ",endStateBoxCheck
+		
+		
+		
 	def pathFinder(startState,endState):
+		def getLegalActionsBoxes(state,boxes):
+			originalActions = [d for d in Directions.legalMoves]
+			actions = [d for d in Directions.legalMoves]
+			for direction in originalActions:
+				if direction in Directions.rotations:
+					rotatedBoxes = boxes.rotatedCoords(state)
+					if not rotatedBoxes:
+						actions.remove(direction)
+						continue
+					if rotatedBoxes.hasIllegalCoords(state) and (direction in actions):
+						actions.remove(direction)
+						continue
+				else:
+					newBoxes = boxes.pushedToDirectionCoords(direction)
+					if newBoxes.hasIllegalCoords(state) and (direction in actions):
+						actions.remove(direction)
+						continue
+			return actions
+		def isTerminalBoxes(state,boxes):
+			for box in boxes:
+				if (box[1]+1)>=boardDepth or state[(box[0],box[1]+1)]:
+					return True
+			return False
 		topBoxes = startState.tetroBoxList
 		initialDownPush = getInitialDownPush(topBoxes,startState)
 		startBoxes = startState.tetroBoxList.pushedDownCoords(initialDownPush)
 		startState = State(startBoxes,startState.parent,boolGridAdditions=startState.boolGridAdditions)
 		frontier = deque([startBoxes])
 		explored = {startBoxes:tuple([Directions.D]*initialDownPush)} #dict to actions
-		boxesToState = {startBoxes:startState}
 		terminalStates = []
-		testEndBoxes = tuple([tuple(box) for box in endState.tetroBoxList])
+		testEndBoxes = endState.tetroBoxList
 		while frontier:
 			front = frontier.popleft()
-			frontState = boxesToState[front]
 			oldActions = list(explored[front])
-			newActions = frontState.getLegalActions()
+			newActions = getLegalActionsBoxes(startState,front)
 			for newAction in newActions:
-				newState = frontState.generateSuccessor(newAction)
-				newBoxes = newState.tetroBoxList
+				newBoxes = front.rotatedCoords(startState) if (newAction in Directions.rotations) else front.pushedToDirectionCoords(newAction)
 				if not newBoxes in explored:
 					explored[newBoxes] = tuple(oldActions+[newAction])
-					boxesToState[newBoxes] = newState
 					if newBoxes == testEndBoxes:
 						pathActions = tuple(list(explored[front])+[newAction])
 						return pathActions
 					frontier.append(newBoxes)
 	pathFound = pathFinder(startState,endState)
-	approvedPath = checkPath(startState,endState,pathFound)
-	return approvedPath
+	#approvedPath = checkPath(startState,endState,pathFound)
+	return tuple(list(pathFound)+[Directions.D])
+	
+	
+	
+	
+	
 def getInitialDownPush(startBoxes,state):
 	highestGridRow = 19
 	for row in range(boardDepth-1,0,-1):

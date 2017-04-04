@@ -1,5 +1,10 @@
 import conf
 from conf import *
+#import pyscreenshot as ImageGrab
+#import ImageGrab
+import thread
+import time
+#import screenshot
 class Directions:
 	D = "Down"
 	L = "Left"
@@ -35,6 +40,7 @@ class QuadCoords:
 			self.rightCol = max(cols)
 			self.topRow = min(rows)
 			self.botRow = max(rows)
+			#newCoords = [(col,row) for col in range(self.leftCol,self.rightCol+1) for row in range(self.topRow,self.botRow+1)]
 			for col in range(self.leftCol,self.rightCol+1):
 				for row in range(self.topRow,self.botRow+1):
 					if (col,row) in coords:
@@ -48,7 +54,12 @@ class QuadCoords:
 	def __iter__(self): return self.coords.__iter__()
 	def __str__(self): return "QuadCoords: "+str(self.coords)
 	def __hash__(self): return self.coords.__hash__()
-	def __eq__(self,other): return (self.coords == other)
+	def __eq__(self,other): 
+		for i in range(len(self.coords)):
+			if not (self.coords[i] == other.coords[i]):
+				return False
+		return True
+		#return (self.coords == other)
 	def pushedDownCoords(self,downPush): return QuadCoords([[coord[0],coord[1]+downPush] for coord in self.coords])
 	def pushedToDirectionCoords(self,direction):
 		newCoords = [[coord[0]+Directions.colMod[direction],coord[1]+Directions.rowMod[direction]] for coord in self.coords]
@@ -58,21 +69,23 @@ class QuadCoords:
 		def moveCoordsForLegality(newBoxes):
 			impossibilityCounter = 0
 			def getMovedCoords(movedToDirection):
-				newMovedToDirection = {d:[[newTetro[0]+Directions.colMod[d],newTetro[1]+Directions.rowMod[d]] for newTetro in movedToDirection[d]] for d in Directions.allDirections}
+				newMovedToDirection = {Directions.allDirections[i]:movedToDirection[Directions.allDirections[i]].pushedToDirectionCoords(d) for i in range(len(Directions.allDirections))}
 				return newMovedToDirection
 			conflicts = False
-			movedToDirection = {d:[[newTetro[0],newTetro[1]] for newTetro in newBoxes] for d in Directions.allDirections}
+			#print "newBoxes: ",newBoxes
+			movedToDirection = {d:newBoxes.pushedToDirectionCoords(d) for d in Directions.allDirections}
+			#print "movedToDirection: ",movedToDirection
 			while True:
 				for d in movedToDirection:
 					conflicts = False
 					for newTetro in movedToDirection[d]:
-						if coordsAreIllegal(boolDict,tuple(newTetro)):
+						if coordsAreIllegal(boolDict,newTetro):
 							conflicts = True
 					if not conflicts:
 						return movedToDirection[d]
 				movedToDirection = getMovedCoords(movedToDirection)
 				impossibilityCounter+=1
-				if impossibilityCounter>500:
+				if impossibilityCounter>5:
 					return False
 		origin = self[0]
 		newCoords = []
@@ -81,10 +94,20 @@ class QuadCoords:
 			vertDiff = origin[1]-box[1]
 			newCoord = [origin[0]+vertDiff,origin[1]+horDiff]
 			newCoords.append(newCoord)
+		#print "1"
+		newCoords = QuadCoords(newCoords)
+		#print "newCoords: ",newCoords
 		legalCoords = moveCoordsForLegality(newCoords)
+		#print "1"
 		if not legalCoords: return False
 		return QuadCoords(legalCoords)
+	def hasIllegalCoords(self,boolDict,checkStateTetro=False,extraCoords=[]):
+		for coord in self:
+			if coordsAreIllegal(boolDict,coord,checkStateTetro=checkStateTetro,extraCoords=extraCoords):
+				return True
+		return False
 def coordsAreIllegal(boolDict, coords, checkStateTetro=False, extraCoords=[]):
+	#print "coords: ",coords
 	outOfGrid = (coords[0]<0 or coords[0]>=boardWidth or coords[1]<0 or coords[1]>=boardDepth or bool(boolDict[coords]))
 	return (outOfGrid or (checkStateTetro and (coords in boolDict.tetroBoxList)) or (coords in extraCoords))
 def getCoordToDirection(coord, direction):
@@ -92,3 +115,5 @@ def getCoordToDirection(coord, direction):
 		print "You tried to get a coord to a direction for a rotation. Don't do that."
 	newCoord = tuple([coord[0]+Directions.colMod[direction],coord[1]+Directions.rowMod[direction]])
 	return newCoord
+def avg(list):
+	return float(sum(list))/len(list)

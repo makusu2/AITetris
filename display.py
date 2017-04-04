@@ -31,7 +31,7 @@ class Display:
 		self.scoreLabel = Label(self.master,textvariable=self.scoreText)
 		self.scoreLabel.pack()
 		
-		self.master.after(1,self.beginGame)
+		self.master.after(300,self.beginGame)
 		mainloop()
 	def __getitem__(self,index):
 		return self.gameGrid[index]
@@ -46,6 +46,7 @@ class Display:
 			self.directionPressed(Directions.direDict[keyChar])
 	def beginGame(self):self.endTurn(firstTurn=True)
 	def directionPressed(self,d):
+		#takeScreenshot()
 		if d not in Directions.directions:
 			if d in Directions.rotations:
 				self.rotate()
