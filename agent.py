@@ -229,8 +229,8 @@ class State:
 		newTurnState = State(newCoords,self.parent,boolGridAdditions = boolGridAdditions,runningVal=self.runningVal,depth=self.depth+1)
 		return newTurnState
 	def didSomethingStupidBoxes(self,boxes):
-		for col in range(boxes.leftCol-1,boxes.rightCol+2):
-			for row in range(boxes.topRow-1,boxes.botRow+2):
+		for col in range(boxes.leftCol()-1,boxes.rightCol()+2):
+			for row in range(boxes.topRow()-1,boxes.botRow()+2):
 				currentCoord = (col,row)
 				if makuUtil.coordsAreIllegal(self,currentCoord,checkStateTetro=False,extraCoords=boxes): continue
 				blocked = True
@@ -251,11 +251,11 @@ class Agent(Input):
 	def newTurn(self):
 		startCoords = QuadCoords(tuple([tuple(block) for block in self.parent.fallingBlocks]))
 		actionsToTake = self.getActions()
-		time.sleep(0.01)
+		time.sleep(0.001)
 		for action in actionsToTake:
-			time.sleep(0.1)
+			time.sleep(0.01)
 			self.parent.pressedKeyChar(action)
-			time.sleep(0.1)
+			time.sleep(0.01)
 	def getActions(self):
 		#Call when a new tetro is added
 		#This should return a list of actions (directions) to get the tetro to a good place
@@ -349,5 +349,5 @@ def getInitialDownPush(startBoxes,state):
 		for col in range(boardWidth):
 			if state[col,row]:
 				highestGridRow = row
-	calculatedDownPush = highestGridRow-startBoxes.botRow-1
+	calculatedDownPush = highestGridRow-startBoxes.botRow()-1
 	return max(0,calculatedDownPush)

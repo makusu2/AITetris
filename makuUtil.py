@@ -28,24 +28,25 @@ class QuadCoords:
 	def __init__(self,coords): #For now, it's just going to be to make it work. Optimize later.
 		coords = tuple([tuple(coord) for coord in coords])
 		emptyCoords = (coords == []) or (coords == tuple([]))
-		newCoords = []
-		self.topRow = None
-		self.botRow = None
-		self.leftCol = None
-		self.rightCol = None
-		if not emptyCoords:
-			cols = [coords[i][0] for i in range(len(coords))]
-			rows = [coords[i][1] for i in range(len(coords))]
-			self.leftCol = min(cols)
-			self.rightCol = max(cols)
-			self.topRow = min(rows)
-			self.botRow = max(rows)
+		#newCoords = []
+		#self.topRow = None
+		#self.botRow = None
+		#self.leftCol = None
+		#self.rightCol = None
+		#if not emptyCoords:
+		#	cols = [coords[i][0] for i in range(len(coords))]
+		#	rows = [coords[i][1] for i in range(len(coords))]
+		#	self.leftCol = min(cols)
+		#	self.rightCol = max(cols)
+		#	self.topRow = min(rows)
+		#	self.botRow = max(rows)
 			#newCoords = [(col,row) for col in range(self.leftCol,self.rightCol+1) for row in range(self.topRow,self.botRow+1)]
-			for col in range(self.leftCol,self.rightCol+1):
-				for row in range(self.topRow,self.botRow+1):
-					if (col,row) in coords:
-						newCoords = newCoords + [(col,row)]
-		self.coords = tuple(newCoords)
+		#	for col in range(self.leftCol,self.rightCol+1):
+		#		for row in range(self.topRow,self.botRow+1):
+		#			if (col,row) in coords:
+		#				newCoords = newCoords + [(col,row)]
+		#self.coords = tuple(newCoords)
+		self.coords = coords
 	
 	def __contains__(self,key): return (tuple(key) in self.coords)
 	def __getitem__(self,index): return self.coords[index]
@@ -55,11 +56,19 @@ class QuadCoords:
 	def __str__(self): return "QuadCoords: "+str(self.coords)
 	def __hash__(self): return self.coords.__hash__()
 	def __eq__(self,other): 
+		for coord in self:
+			if not coord in other:
+				return False
+		return True
 		for i in range(len(self.coords)):
 			if not (self.coords[i] == other.coords[i]):
 				return False
 		return True
 		#return (self.coords == other)
+	def botRow(self): return max([self[i][1] for i in range(len(self))])
+	def topRow(self): return min([self[i][1] for i in range(len(self))])
+	def leftCol(self): return min([self[i][0] for i in range(len(self))])
+	def rightCol(self): return max([self[i][0] for i in range(len(self))])
 	def pushedDownCoords(self,downPush): return QuadCoords([[coord[0],coord[1]+downPush] for coord in self.coords])
 	def pushedToDirectionCoords(self,direction):
 		newCoords = [[coord[0]+Directions.colMod[direction],coord[1]+Directions.rowMod[direction]] for coord in self.coords]

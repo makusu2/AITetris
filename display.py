@@ -31,7 +31,7 @@ class Display:
 		self.scoreLabel = Label(self.master,textvariable=self.scoreText)
 		self.scoreLabel.pack()
 		
-		self.master.after(300,self.beginGame)
+		self.master.after(2000,self.beginGame)
 		mainloop()
 	def __getitem__(self,index):
 		return self.gameGrid[index]

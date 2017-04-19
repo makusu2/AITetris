@@ -1,3 +1,3 @@
 boardDepth = 20
 boardWidth = 10
-maxDepth = 1
+maxDepth = 0
